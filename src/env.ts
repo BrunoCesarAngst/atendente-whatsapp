@@ -1,0 +1,6 @@
+export type Bindings = {
+  WHATSAPP_VERIFY_TOKEN: string
+  WHATSAPP_ACCESS_TOKEN: string
+  WHATSAPP_PHONE_NUMBER_ID: string
+  WHATSAPP_GRAPH_API_VERSION: string
+}
