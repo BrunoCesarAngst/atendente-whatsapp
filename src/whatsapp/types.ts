@@ -32,6 +32,19 @@ export type WhatsAppWebhookPayload = {
           text?: {
             body?: string
           }
+
+          interactive?: {
+            type?: string
+            button_reply?: {
+              id?: string
+              title?: string
+            }
+            list_reply?: {
+              id?: string
+              title?: string
+              description?: string
+            }
+          }
         }>
       }
     }>
@@ -39,29 +52,55 @@ export type WhatsAppWebhookPayload = {
 }
 
 export type IncomingTextMessage = {
+  type: 'text'
   from: string
   id: string
   text: string
 }
 
-export function extractIncomingTextMessages(
+export type IncomingInteractiveReply = {
+  type: 'interactive'
+  from: string
+  id: string
+  interactiveId: string
+}
+
+export type IncomingWhatsAppMessage =
+  | IncomingTextMessage
+  | IncomingInteractiveReply
+
+export function extractIncomingMessages(
   payload: WhatsAppWebhookPayload,
-): IncomingTextMessage[] {
-  const result: IncomingTextMessage[] = []
+): IncomingWhatsAppMessage[] {
+  const result: IncomingWhatsAppMessage[] = []
 
   for (const entry of payload.entry ?? []) {
     for (const change of entry.changes ?? []) {
       for (const message of change.value?.messages ?? []) {
-        if (
-          message.type === 'text' &&
-          message.from &&
-          message.id &&
-          message.text?.body
-        ) {
+        if (!message.from || !message.id) {
+          continue
+        }
+
+        if (message.type === 'text' && message.text?.body) {
           result.push({
+            type: 'text',
             from: message.from,
             id: message.id,
             text: message.text.body,
+          })
+          continue
+        }
+
+        const interactiveId =
+          message.interactive?.button_reply?.id ??
+          message.interactive?.list_reply?.id
+
+        if (message.type === 'interactive' && interactiveId) {
+          result.push({
+            type: 'interactive',
+            from: message.from,
+            id: message.id,
+            interactiveId,
           })
         }
       }
@@ -69,4 +108,12 @@ export function extractIncomingTextMessages(
   }
 
   return result
+}
+
+export function extractIncomingTextMessages(
+  payload: WhatsAppWebhookPayload,
+): Array<Omit<IncomingTextMessage, 'type'>> {
+  return extractIncomingMessages(payload)
+    .filter((message): message is IncomingTextMessage => message.type === 'text')
+    .map(({ type: _, ...message }) => message)
 }

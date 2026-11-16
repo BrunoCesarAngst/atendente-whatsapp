@@ -1,6 +1,5 @@
-export type Bindings = {
-  WHATSAPP_VERIFY_TOKEN: string
-  WHATSAPP_ACCESS_TOKEN: string
-  WHATSAPP_PHONE_NUMBER_ID: string
-  WHATSAPP_GRAPH_API_VERSION: string
+export type Bindings = Omit<CloudflareBindings, 'DB' | 'WHATSAPP_GRAPH_API_BASE_URL'> & {
+  WHATSAPP_APP_SECRET: string
+  DB?: D1Database
+  WHATSAPP_GRAPH_API_BASE_URL?: string
 }
