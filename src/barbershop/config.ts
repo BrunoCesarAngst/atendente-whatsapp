@@ -6,6 +6,7 @@ export type BarbershopService = {
 }
 
 export type BarbershopConfig = {
+  mode: 'appointment'
   id: string
   name: string
   services: BarbershopService[]
@@ -22,6 +23,7 @@ export type BarbershopConfig = {
 }
 
 export const barbershopConfig: BarbershopConfig = {
+  mode: 'appointment',
   id: 'barbearia-central',
   name: 'Barbearia Central',
 

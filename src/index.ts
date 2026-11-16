@@ -12,8 +12,8 @@ import {
   sendWhatsAppResponse,
 } from './whatsapp/client.ts'
 import { verifyWhatsAppSignature } from './whatsapp/signature.ts'
-import { barbershopConfig } from './barbershop/config.ts'
-import { createBookingJourneyEngine } from './conversation/booking-engine.ts'
+import { getBusinessProfile } from './businesses/profiles.ts'
+import { createJourneyEngine } from './conversation/journey-engine.ts'
 import { ConversationOrchestrator } from './conversation/orchestrator.ts'
 import type { ConversationRepository } from './persistence/conversation-repository.ts'
 import { InMemoryConversationRepository } from './persistence/in-memory-conversation-repository.ts'
@@ -21,10 +21,14 @@ import { D1ConversationRepository } from './persistence/d1-conversation-reposito
 
 const inMemoryRepository = new InMemoryConversationRepository()
 
-function createOrchestrator(repository: ConversationRepository) {
+function createOrchestrator(
+  repository: ConversationRepository,
+  profileName?: string,
+) {
+  const business = getBusinessProfile(profileName)
   return new ConversationOrchestrator(
     repository,
-    createBookingJourneyEngine(repository, barbershopConfig),
+    createJourneyEngine(repository, business),
   )
 }
 
@@ -115,7 +119,8 @@ app.post('/webhook', async (c) => {
       const repository = c.env.DB
         ? new D1ConversationRepository(c.env.DB)
         : inMemoryRepository
-      const orchestrator = createOrchestrator(repository)
+      const business = getBusinessProfile(c.env.BUSINESS_PROFILE)
+      const orchestrator = createOrchestrator(repository, c.env.BUSINESS_PROFILE)
 
       if (!c.env.DB) {
         logOperationalEvent('conversation_storage_not_configured', 'failed')
@@ -123,7 +128,7 @@ app.post('/webhook', async (c) => {
 
       for (const message of messages) {
         const responses = await orchestrator.handle({
-          businessId: barbershopConfig.id,
+          businessId: business.id,
           customerId: message.from,
           messageId: message.id,
           receivedAt: new Date().toISOString(),

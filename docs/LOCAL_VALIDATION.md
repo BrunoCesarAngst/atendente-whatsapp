@@ -69,6 +69,31 @@ O resultado esperado é uma conversa, uma reserva confirmada e seis mensagens
 processadas. Como o estado fica em `.wrangler/state`, pare e reinicie o Worker
 para verificar que a reserva permanece.
 
+## Triagem de piscina e jardinagem
+
+Para validar uma solicitação em vez de uma reserva, use uma pasta local nova,
+aplique as migrations e inicie o Worker com o perfil escolhido. O mock continua
+o mesmo e nunca chama a Meta:
+
+```sh
+npx wrangler d1 migrations apply DB --local --persist-to .wrangler/request-state
+npm run dev -- --local --persist-to .wrangler/request-state --var BUSINESS_PROFILE:pool --port 8787
+```
+
+Em outro terminal, execute:
+
+```sh
+LOCAL_REQUEST_PROFILE=pool npm run smoke:requests
+```
+
+Troque `pool` por `gardening` nos dois comandos para validar corte de grama e
+jardinagem. Ao fim de cada cenário, uma solicitação pendente deve existir e
+nenhuma reserva automática deve ter sido criada:
+
+```sh
+npx wrangler d1 execute DB --local --persist-to .wrangler/request-state --command "SELECT (SELECT COUNT(*) FROM service_requests WHERE status = 'pending') AS pending_requests, (SELECT COUNT(*) FROM appointments) AS appointments;"
+```
+
 ## Limites
 
 Este roteiro valida a aplicação localmente. Ele não comprova callback público,

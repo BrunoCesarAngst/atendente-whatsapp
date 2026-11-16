@@ -4,7 +4,8 @@
 
 O projeto é um único Cloudflare Worker em TypeScript. Ele recebe eventos do
 webhook do WhatsApp Cloud API, confirma o recebimento rapidamente e processa
-mensagens de texto em segundo plano.
+mensagens em segundo plano. Um perfil de negócio seleciona uma jornada de agenda
+automática ou de triagem para avaliação humana.
 
 ```text
 Meta WhatsApp Cloud API
@@ -14,7 +15,8 @@ Meta WhatsApp Cloud API
           |
           +--> src/whatsapp/types.ts (leitura do contrato externo)
           |
-          +--> src/barbershop/ (regras e configuração do atendimento)
+  +--> src/businesses/ (perfis e configuração do atendimento)
+  +--> src/conversation/ (jornadas de agenda e triagem)
           |
           +--> src/whatsapp/client.ts (envio para a Cloud API)
 ```
@@ -26,7 +28,10 @@ Meta WhatsApp Cloud API
 | `src/index.ts` | Rotas de saúde, verificação do webhook e coordenação do processamento. |
 | `src/whatsapp/types.ts` | Tipos e extração de mensagens de texto recebidas da Meta. |
 | `src/whatsapp/client.ts` | Construção e envio de mensagens para a Cloud API. |
-| `src/barbershop/` | Configuração da barbearia e respostas determinísticas de domínio. |
+| `src/barbershop/` | Perfil de agenda e respostas determinísticas da barbearia. |
+| `src/businesses/` | Contrato e perfis locais de barbearia, piscina e jardinagem. |
+| `src/conversation/` | Seleção de jornada, agenda, triagem e disponibilidade. |
+| `src/persistence/` | Porta de conversa, reservas e solicitações; adaptadores D1 e em memória. |
 | `src/env.ts` | Contrato tipado dos bindings necessários em execução. |
 | `wrangler.jsonc` | Configuração do Worker e valores públicos de runtime. |
 | `tests/unit/` | Testes unitários executados por `npm test`. |
@@ -36,7 +41,8 @@ Meta WhatsApp Cloud API
 1. A Meta chama `GET /webhook` para verificação ou `POST /webhook` para eventos.
 2. O Worker confirma eventos aceitos com `EVENT_RECEIVED`.
 3. Eventos sem mensagem de texto são ignorados sem resposta ao cliente.
-4. Para cada texto recebido, o domínio determina a resposta.
+4. O perfil de negócio determina se a conversa conclui uma reserva ou coleta uma
+   solicitação para avaliação humana.
 5. O adaptador WhatsApp envia a resposta pela Cloud API.
 
 O hardening de assinatura e a redução de logs sensíveis estão especificados em
@@ -61,8 +67,19 @@ implementação e cobertura de testes.
 runtime. Tokens de acesso, tokens de verificação e App Secret são segredos do
 ambiente e não pertencem ao Git, a fixtures ou a logs.
 
+## Perfis locais de validação
+
+- **Barbearia**: serviço, data, horário e reserva automática.
+- **Limpeza de piscina**: serviço, frequência, bairro e período preferido;
+  cria solicitação pendente sem preço ou horário definitivo.
+- **Jardinagem**: serviço, bairro, porte da área e período preferido; cria
+  solicitação pendente sem preço ou horário definitivo.
+
+Após uma solicitação, a conversa entra em modo humano. Nenhuma notificação
+proativa ou orçamento automático é produzido nesta etapa.
+
 ## Evolução planejada
 
-A especificação `specs/002-booking-journey/` propõe conversa persistida e D1.
-Enquanto ela não for implementada e validada, a arquitetura efetiva permanece
-sem estado persistente e com respostas determinísticas.
+A configuração ainda é administrada localmente e selecionada por ambiente. Um
+painel, múltiplos negócios no mesmo número, envio de notificações e orçamento
+ficam para evolução posterior, após validação dos roteiros.

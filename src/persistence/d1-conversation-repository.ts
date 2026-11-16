@@ -3,6 +3,8 @@ import type {
   Appointment,
   ConversationRepository,
   NewAppointment,
+  NewServiceRequest,
+  ServiceRequest,
 } from './conversation-repository.ts'
 
 export class D1ConversationRepository implements ConversationRepository {
@@ -87,5 +89,39 @@ export class D1ConversationRepository implements ConversationRepository {
       input.startsAt, input.priceInReais, input.durationMinutes,
     ).run()
     return result.meta.changes === 1 ? { ...input, id, status: 'confirmed' } : null
+  }
+
+  async listServiceRequests(businessId: string): Promise<ServiceRequest[]> {
+    const result = await this.database.prepare(
+      "SELECT id, business_id, customer_id, service_id, details_json, created_at FROM service_requests WHERE business_id = ? AND status = 'pending' ORDER BY created_at",
+    ).bind(businessId).all<{
+      id: string; business_id: string; customer_id: string; service_id: string; details_json: string; created_at: string
+    }>()
+
+    return result.results.map((row) => ({
+      id: row.id,
+      businessId: row.business_id,
+      customerId: row.customer_id,
+      serviceId: row.service_id,
+      details: JSON.parse(row.details_json) as Record<string, string>,
+      status: 'pending',
+      createdAt: row.created_at,
+    }))
+  }
+
+  async createServiceRequest(input: NewServiceRequest): Promise<ServiceRequest> {
+    const id = crypto.randomUUID()
+    await this.database.prepare(`
+      INSERT INTO service_requests (id, business_id, customer_id, service_id, details_json, status, created_at)
+      VALUES (?, ?, ?, ?, ?, 'pending', ?)
+    `).bind(
+      id,
+      input.businessId,
+      input.customerId,
+      input.serviceId,
+      JSON.stringify(input.details),
+      input.createdAt,
+    ).run()
+    return { ...input, id, status: 'pending' }
   }
 }

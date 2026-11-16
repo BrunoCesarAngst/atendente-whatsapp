@@ -2,6 +2,8 @@ import type {
   Appointment,
   ConversationRepository,
   NewAppointment,
+  NewServiceRequest,
+  ServiceRequest,
 } from './conversation-repository.ts'
 import type { ConversationState } from '../conversation/state.ts'
 
@@ -10,6 +12,7 @@ export class InMemoryConversationRepository
   private readonly conversations = new Map<string, ConversationState>()
   private readonly processedMessages = new Set<string>()
   private readonly appointments: Appointment[] = []
+  private readonly serviceRequests: ServiceRequest[] = []
 
   async claimMessage(businessId: string, customerId: string, messageId: string) {
     const key = `${businessId}:${customerId}:${messageId}`
@@ -59,5 +62,19 @@ export class InMemoryConversationRepository
     }
     this.appointments.push(appointment)
     return appointment
+  }
+
+  async listServiceRequests(businessId: string) {
+    return this.serviceRequests.filter((request) => request.businessId === businessId)
+  }
+
+  async createServiceRequest(input: NewServiceRequest) {
+    const request: ServiceRequest = {
+      ...input,
+      id: `service-request-${this.serviceRequests.length + 1}`,
+      status: 'pending',
+    }
+    this.serviceRequests.push(request)
+    return request
   }
 }

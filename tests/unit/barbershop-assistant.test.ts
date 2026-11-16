@@ -39,6 +39,7 @@ test('informa os horários de atendimento', () => {
 
 test('aceita configuração do estabelecimento fora da integração WhatsApp', () => {
   const reply = getBarbershopReply('preços', {
+    mode: 'appointment',
     id: 'barbearia-teste',
     name: 'Barbearia de Teste',
     services: [{ id: 'kids', name: 'Corte infantil', priceInReais: 30, durationMinutes: 30 }],

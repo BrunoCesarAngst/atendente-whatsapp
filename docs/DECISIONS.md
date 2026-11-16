@@ -58,10 +58,9 @@ implementada, o domínio dependerá de uma abstração de repositório e o adapt
 Cloudflare/D1 ficará isolado. A decisão ainda depende da execução e validação de
 `specs/002-booking-journey/`.
 
-A migration e um adaptador D1 foram adicionados para validação local. O binding
-`DB` não será incluído em `wrangler.jsonc` até que o proprietário informe o
-identificador do banco e o ambiente pretendido; nenhuma migration remota foi
-executada.
+Uma migration e um adaptador D1 foram validados somente em cópias locais. O
+binding `DB` está configurado para permitir essa simulação, mas nenhuma migration
+remota foi executada e esse fato não comprova o estado do banco remoto.
 
 ## ADR-008 — Mock local explícito para a Cloud API do WhatsApp
 
@@ -73,3 +72,13 @@ Somente o ambiente local pode optar por outro destino através de
 local fica limitado a `127.0.0.1`, não recebe nem registra segredos e expõe
 apenas metadados das respostas simuladas. Isso permite validar Worker, D1 e a
 jornada sem chamar a Meta nem publicar configurações.
+
+## ADR-009 — Triagem antes de orçamento ou visita
+
+**Status:** Aceita
+
+Perfis de piscina e jardinagem registram uma solicitação pendente e interrompem
+a automação após coletar informações mínimas. O Worker não promete preço,
+disponibilidade, visita ou retorno proativo. A decisão humana e uma integração
+de notificação ficam fora deste incremento; assim, os dados e as regras podem
+ser validados localmente sem assumir um canal operacional inexistente.

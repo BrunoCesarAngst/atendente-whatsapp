@@ -1,21 +1,32 @@
-```txt
+# Atendente WhatsApp
+
+Worker de atendimento para negócios de serviço. O mesmo núcleo valida três
+roteiros locais: agendamento de barbearia, solicitação de limpeza de piscina e
+solicitação de corte de grama ou jardinagem.
+
+## Garantias atuais
+
+- webhook autenticado antes do processamento;
+- resposta imediata à Meta e trabalho assíncrono;
+- logs operacionais sem texto de cliente, telefone ou segredos;
+- deduplicação de eventos;
+- reserva automática somente para perfil de agenda;
+- triagem pendente e modo humano para serviços que exigem avaliação.
+
+## Verificação local
+
+```sh
 npm install
-npm run dev
+npm run typecheck
+npm test
+npm run cf-typegen -- --check
 ```
 
-```txt
-npm run deploy
-```
+O roteiro completo com D1 local e Cloud API simulada está em
+[docs/LOCAL_VALIDATION.md](docs/LOCAL_VALIDATION.md). Ele não chama Meta,
+Cloudflare remoto ou produção.
 
-[For generating/synchronizing types based on your Worker configuration run](https://developers.cloudflare.com/workers/wrangler/commands/#types):
+## Publicação
 
-```txt
-npm run cf-typegen
-```
-
-Pass the `CloudflareBindings` as generics when instantiating `Hono`:
-
-```ts
-// src/index.ts
-const app = new Hono<{ Bindings: CloudflareBindings }>()
-```
+Não execute deploy, migration remota ou alteração de secrets sem autorização
+explícita do proprietário. Consulte `AGENTS.md` antes de alterar o projeto.
