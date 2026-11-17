@@ -98,3 +98,19 @@ diagnóstico estão em `docs/HOMOLOGACAO_META.md`. A aprovação exige uma mensa
 humana recebida e processada ponta a ponta; uma leitura isolada da lista de
 inscrições da conta de teste não substitui esse ensaio, pois o sandbox pode
 demorar a refletir a associação apesar de a entrega já funcionar.
+
+## ADR-011 — Não migrar número pessoal para atuar somente como destinatário de teste
+
+**Status:** Aceita
+
+O número de teste da Meta aceita telefones autorizados como destinatários de
+sandbox; esses telefones não precisam ser números comerciais, nem estar
+registrados na Cloud API. Uma migração de WhatsApp comum para WhatsApp Business
+só deve ser considerada diante de uma necessidade de negócio independente,
+como coexistência futura, com avaliação de impacto e plano de reversão.
+
+No piloto inicial, a migração de um número pessoal ocorreu antes de ser
+necessária e coincidiu com um estado de autorização inconsistente da Meta para
+aquele destinatário. A partir desta decisão, o piloto deve preferir um número
+de teste sem migração recente. O número pessoal já migrado não será alterado
+sem decisão explícita do proprietário.

@@ -162,6 +162,21 @@ mensagem recebida deve gerar registro no D1 e resposta no WhatsApp.
 Se o `POST` falhar por permissão, gere um token com as permissões adequadas e
 confirme que ele pertence ao mesmo app e à mesma conta de mensagens da Etapa 1.
 
+### Limitação observada após migrar um destinatário para WhatsApp Business
+
+Durante este piloto, um número pessoal usado como destinatário foi migrado para
+o WhatsApp Business. Depois disso, ele continuou aparecendo no painel da Meta,
+mas a Cloud API passou a recusar respostas automáticas com o código `131030`.
+Remover e adicionar novamente o destinatário, gerar token novo e atualizar o
+segredo de `staging` não resolveu de imediato; um envio-controlado fora do
+Worker reproduziu o mesmo resultado.
+
+Portanto, não trate a migração para WhatsApp Business como requisito para ser
+destinatário de sandbox. Para essa finalidade, um WhatsApp comum já basta. Se o
+problema persistir após tempo de propagação, use outro telefone existente apenas
+como destinatário de teste ou crie uma configuração de teste nova. Não registre
+o número pessoal no fluxo tradicional da Etapa 2 para tentar contornar o erro.
+
 ## Ensaio ponta a ponta
 
 ### 1. Validar saída
@@ -224,7 +239,7 @@ credenciais e persistência remota.
 | Modelo chega, mas `oi` não chega ao Worker | conta de mensagens não inscrita no app | Executar o `POST .../subscribed_apps` para a conta da Etapa 1 e repetir o ensaio |
 | Worker retorna `webhook_signature_rejected` | App Secret do app de homologação não corresponde ao segredo de `staging` | Revelar o segredo somente no painel da Meta e substituir apenas o segredo remoto de `staging` |
 | Evento aparece como `webhook_ignored` | evento de status, não mensagem recebida | É esperado para status de entrega; repetir com uma mensagem humana de texto |
-| D1 registra conversa, mas não há resposta | token de acesso, identificação do número de teste ou envio Cloud API | Renovar token, atualizar segredo e conferir que `WHATSAPP_PHONE_NUMBER_ID` de `staging` é o da Etapa 1 |
+| D1 registra conversa, mas não há resposta e a Meta retorna `131030` | a API não reconhece o destinatário na lista do número de teste | Renovar a autorização, aguardar propagação e repetir um envio-controlado; se persistir, usar outro destinatário de teste ou ambiente de teste novo |
 | A Etapa 2 pede desconectar WhatsApp Business existente | é o fluxo tradicional de registro, não coexistência | Fechar o formulário; não desconectar o número pessoal durante o piloto |
 
 ## Números reais e coexistência

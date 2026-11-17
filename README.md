@@ -32,6 +32,9 @@ callback, a inscrição obrigatória da conta de mensagens no app, o ensaio pont
 a ponta, diagnóstico seguro e retorno rápido. Usa apenas o ambiente `staging`
 e nunca os números dos negócios participantes.
 
+O estado consolidado, o histórico do piloto e o ponto exato de retomada estão
+em [docs/ESTADO_ATUAL.md](docs/ESTADO_ATUAL.md).
+
 ## Publicação
 
 Não execute deploy, migration remota ou alteração de secrets sem autorização
