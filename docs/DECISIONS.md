@@ -82,3 +82,19 @@ a automação após coletar informações mínimas. O Worker não promete preço
 disponibilidade, visita ou retorno proativo. A decisão humana e uma integração
 de notificação ficam fora deste incremento; assim, os dados e as regras podem
 ser validados localmente sem assumir um canal operacional inexistente.
+
+## ADR-010 — Inscrição explícita da conta de mensagens por ambiente
+
+**Status:** Aceita
+
+O callback do app e o campo `messages` não bastam para que a Meta entregue
+eventos de uma conta de mensagens (WABA). Cada conta, inclusive a conta de
+teste criada na Etapa 1 da Meta, deve ser inscrita explicitamente no app de
+homologação pelo fluxo `subscribed_apps`, com token temporário ou permanente
+autorizado para aquela mesma conta.
+
+O procedimento, a distinção entre callback, campo e inscrição, e os sinais de
+diagnóstico estão em `docs/HOMOLOGACAO_META.md`. A aprovação exige uma mensagem
+humana recebida e processada ponta a ponta; uma leitura isolada da lista de
+inscrições da conta de teste não substitui esse ensaio, pois o sandbox pode
+demorar a refletir a associação apesar de a entrega já funcionar.

@@ -16,5 +16,21 @@
 			"database_name": "atendenteg-production",
 			"database_id": "3f897ecd-086f-4ab7-882a-09ca17beef23"
 		}
-	]
+	],
+	"env": {
+		"staging": {
+			"vars": {
+				"WHATSAPP_PHONE_NUMBER_ID": "1329301080272794",
+				"WHATSAPP_GRAPH_API_VERSION": "v25.0",
+				"BUSINESS_PROFILE": "barbershop"
+			},
+			"d1_databases": [
+				{
+					"binding": "DB",
+					"database_name": "atendenteg-staging",
+					"database_id": "bc2cb547-da86-4973-97b3-a89f1258f9e8"
+				}
+			]
+		}
+	}
 }

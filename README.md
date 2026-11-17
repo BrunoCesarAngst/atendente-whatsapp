@@ -26,6 +26,12 @@ O roteiro completo com D1 local e Cloud API simulada está em
 [docs/LOCAL_VALIDATION.md](docs/LOCAL_VALIDATION.md). Ele não chama Meta,
 Cloudflare remoto ou produção.
 
+O roteiro separado para validar a cadeia real com o número de teste da Meta
+está em [docs/HOMOLOGACAO_META.md](docs/HOMOLOGACAO_META.md). Ele cobre o
+callback, a inscrição obrigatória da conta de mensagens no app, o ensaio ponta
+a ponta, diagnóstico seguro e retorno rápido. Usa apenas o ambiente `staging`
+e nunca os números dos negócios participantes.
+
 ## Publicação
 
 Não execute deploy, migration remota ou alteração de secrets sem autorização

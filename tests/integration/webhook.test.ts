@@ -20,6 +20,14 @@ const bindings = {
   WHATSAPP_GRAPH_API_VERSION: 'v25.0',
 }
 
+test('expõe política de privacidade pública', async () => {
+  const response = await app.request('/privacy', { method: 'GET' }, bindings)
+
+  assert.equal(response.status, 200)
+  assert.match(response.headers.get('content-type') ?? '', /text\/html/)
+  assert.match(await response.text(), /Política de Privacidade/)
+})
+
 test('rejeita evento sem assinatura antes de interpretar JSON', async () => {
   const response = await app.request('/webhook', { method: 'POST', body: 'not-json' }, bindings)
 

@@ -49,6 +49,41 @@ app.get('/health', (c) => {
   })
 })
 
+app.get('/privacy', (c) => {
+  return c.html(`<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Política de Privacidade — AtendenteG</title>
+  </head>
+  <body>
+    <main>
+      <h1>Política de Privacidade</h1>
+      <p>Última atualização: 16 de novembro de 2026.</p>
+
+      <h2>Finalidade</h2>
+      <p>O AtendenteG é um atendente de serviços integrado ao WhatsApp. Ele usa as informações recebidas na conversa exclusivamente para responder solicitações, registrar agendamentos ou pedidos e encaminhá-los ao responsável pelo estabelecimento.</p>
+
+      <h2>Dados tratados</h2>
+      <p>Podem ser tratados o número de WhatsApp, nome de perfil disponibilizado pela plataforma, mensagens enviadas pelo cliente e dados necessários ao serviço solicitado, como horário, local ou detalhes do pedido.</p>
+
+      <h2>Uso e compartilhamento</h2>
+      <p>Os dados não são vendidos. Eles são usados somente para a operação do atendimento e podem ser compartilhados com a Meta/WhatsApp e com o estabelecimento responsável pelo serviço, quando isso for necessário para atender a solicitação.</p>
+
+      <h2>Armazenamento e exclusão</h2>
+      <p>Os dados são mantidos apenas pelo tempo necessário para o atendimento, a organização do serviço e obrigações aplicáveis. Para solicitar acesso, correção ou exclusão, entre em contato pelo mesmo canal de WhatsApp do estabelecimento que prestou o atendimento.</p>
+
+      <h2>Segurança</h2>
+      <p>O serviço utiliza conexões protegidas e controles de acesso apropriados. Nenhum sistema é totalmente livre de riscos, mas adotamos medidas razoáveis para proteger os dados tratados.</p>
+
+      <h2>Alterações</h2>
+      <p>Esta política poderá ser atualizada para refletir mudanças no serviço ou em requisitos legais. A versão vigente ficará disponível neste endereço.</p>
+    </main>
+  </body>
+</html>`)
+})
+
 //
 // META WEBHOOK VERIFICATION
 //
