@@ -276,3 +276,36 @@ test('agrega somente a janela solicitada e a empresa da reserva, mesmo com confl
     automatedBookings: 1, estimatedBookings: 1, savedSeconds: 600, hourlyCostCents: null,
   })
 })
+
+test('D1 confirma apenas uma reserva em confirmações simultâneas com sobreposição', async (t) => {
+  const { sqlite, binding } = createDatabase()
+  t.after(() => sqlite.close())
+  const repository = new D1ConversationRepository(binding)
+  const appointment = {
+    businessId: 'empresa-a',
+    customerId: 'cliente-a',
+    serviceId: 'haircut',
+    professionalId: 'profissional-ficticio',
+    startsAt: '2026-11-04T09:00:00-03:00',
+    priceInReais: 35,
+    durationMinutes: 45,
+  }
+
+  const [first, second] = await Promise.all([
+    repository.confirmAppointment(appointment),
+    repository.confirmAppointment({
+      ...appointment,
+      customerId: 'cliente-b',
+      startsAt: '2026-11-04T09:30:00-03:00',
+    }),
+  ])
+
+  assert.ok(first)
+  assert.equal(second, null)
+  assert.ok(await repository.confirmAppointment({
+    ...appointment,
+    customerId: 'cliente-c',
+    startsAt: '2026-11-04T09:45:00-03:00',
+  }))
+  assert.equal((await repository.listAppointments('empresa-a', 'profissional-ficticio')).length, 2)
+})

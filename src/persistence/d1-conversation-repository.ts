@@ -85,14 +85,24 @@ export class D1ConversationRepository implements ConversationRepository, Booking
     const result = await this.database.prepare(`
       INSERT OR IGNORE INTO appointments
         (id, business_id, customer_id, service_id, professional_id, starts_at, price_in_reais, duration_minutes, status, automated_at, baseline_seconds)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'confirmed', ?,
+      SELECT ?, ?, ?, ?, ?, ?, ?, ?, 'confirmed', ?,
         CASE WHEN ? IS NOT NULL THEN
           (SELECT baseline_seconds FROM booking_impact_settings WHERE business_id = ?)
-        END)
+        END
+      WHERE NOT EXISTS (
+        SELECT 1 FROM appointments
+        WHERE business_id = ?
+          AND professional_id = ?
+          AND status = 'confirmed'
+          AND datetime(starts_at) < datetime(?, '+' || ? || ' minutes')
+          AND datetime(?) < datetime(starts_at, '+' || duration_minutes || ' minutes')
+      )
     `).bind(
       id, input.businessId, input.customerId, input.serviceId, input.professionalId,
       input.startsAt, input.priceInReais, input.durationMinutes,
       input.automatedAt ?? null, input.automatedAt ?? null, input.businessId,
+      input.businessId, input.professionalId,
+      input.startsAt, input.durationMinutes, input.startsAt,
     ).run()
     return result.meta.changes === 1 ? { ...input, id, status: 'confirmed' } : null
   }
