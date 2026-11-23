@@ -35,6 +35,10 @@ O ensaio ponta a ponta usa apenas o ambiente `staging`.
 O estado consolidado, o histórico do piloto e o ponto exato de retomada estão
 em [docs/ESTADO_ATUAL.md](docs/ESTADO_ATUAL.md).
 
+O [próximo incremento do AtendenteG](docs/PROXIMO_INCREMENTO.md) divide o
+autoatendimento pelo WhatsApp em entregas testáveis e explica como medir e
+consultar o valor da agenda pelo WhatsApp do estabelecimento.
+
 ## Publicação
 
 O [fluxo de Git e GitHub](docs/WORKFLOW_GIT.md) descreve a sequência de PRs,
