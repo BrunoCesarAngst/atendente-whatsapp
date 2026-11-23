@@ -20,8 +20,13 @@ type OwnerMessage = {
   ownerId: string
   messageId: string
   receivedAt: string
-  text: string
-}
+} & ({ text: string; interactiveId?: never } | { text?: never; interactiveId: string })
+
+const ownerShortcuts = [
+  { id: 'owner:value', label: 'Ver valor', command: '/valor' },
+  { id: 'owner:calibration', label: 'Como calibrar', command: '/calibrar' },
+  { id: 'owner:hourly-cost', label: 'Ajustar custo-hora', command: '/custo-hora' },
+]
 
 function formatDuration(totalSeconds: number) {
   const hours = Math.floor(totalSeconds / 3600)
@@ -64,9 +69,12 @@ export async function handleBookingImpactCommand(
   input: OwnerMessage,
   log?: OperationalLogger,
 ): Promise<ConversationResponse[] | null> {
-  const [first, ...parameters] = input.text.trim().split(/\s+/)
+  const commandText = input.text ?? ownerShortcuts.find(({ id }) => id === input.interactiveId)?.command
+  if (commandText === undefined) return null
+  const [first, ...parameters] = commandText.trim().split(/\s+/)
   const command = first.toLowerCase()
-  if (command !== '/valor' && command !== '/calibrar' && command !== '/custo-hora') {
+  const isMenu = command === '/' || command === '/menu'
+  if (!isMenu && command !== '/valor' && command !== '/calibrar' && command !== '/custo-hora') {
     return null
   }
 
@@ -74,6 +82,16 @@ export async function handleBookingImpactCommand(
   if (!await repository.claimMessage(businessId, ownerId, messageId)) {
     log?.('message_duplicate', 'ignored')
     return []
+  }
+
+  if (isMenu) {
+    if (parameters.length !== 0) return text('Envie /menu para abrir os atalhos do responsável.')
+    log?.('owner_menu_opened', 'success')
+    return [{
+      type: 'buttons',
+      text: 'Atalhos do responsável\nEscolha uma opção para acompanhar o valor da agenda.',
+      options: ownerShortcuts.map(({ id, label }) => ({ id, label })),
+    }]
   }
 
   if (command === '/valor') {

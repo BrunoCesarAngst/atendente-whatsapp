@@ -207,6 +207,31 @@ test('desabilita acesso administrativo quando o mapa de responsáveis é inváli
   assert.match(await sendText('cliente', 'Qual o preço?'), /Corte masculino/)
 })
 
+test('abre atalhos do responsável e revalida a permissão ao tocar nos botões', async (t) => {
+  const { calls, sendText, choose } = await createWebhookTest(t, {
+    WHATSAPP_BUSINESS_PROFILES: JSON.stringify({ [phoneNumberId]: 'barbershop', 'numero-salao': 'salon' }),
+    WHATSAPP_OWNER_IDS: JSON.stringify({ [phoneNumberId]: owner, 'numero-salao': 'responsavel-salao' }),
+  })
+  await sendText(owner, '/')
+  const buttons = calls.at(-1)?.interactive?.action.buttons
+  assert.deepEqual(buttons?.map(({ reply }) => reply.id), ['owner:value', 'owner:calibration', 'owner:hourly-cost'])
+  await sendText(owner, '/menu')
+  assert.equal(calls.at(-1)?.interactive?.action.buttons?.[0].reply.id, 'owner:value')
+  await choose(owner, 'owner:value')
+  assert.match(calls.at(-1)?.text?.body ?? '', /Valor do AtendenteG/)
+  await choose(owner, 'owner:calibration')
+  assert.match(calls.at(-1)?.text?.body ?? '', /Exemplo: \/calibrar/)
+  await choose(owner, 'owner:hourly-cost')
+  assert.match(calls.at(-1)?.text?.body ?? '', /Exemplo: \/custo-hora/)
+
+  await sendText('cliente-comum', '/')
+  assert.notEqual(calls.at(-1)?.interactive?.action.buttons?.[0].reply.id, 'owner:value')
+  await choose('cliente-comum', 'owner:value')
+  assert.doesNotMatch(calls.at(-1)?.text?.body ?? '', /Valor do AtendenteG/)
+  await choose(owner, 'owner:value', undefined, 'numero-salao')
+  assert.doesNotMatch(calls.at(-1)?.text?.body ?? '', /Valor do AtendenteG/)
+})
+
 test('agrega somente a janela solicitada e a empresa da reserva, mesmo com conflito de horário', async (t) => {
   const { sqlite, binding } = createDatabase()
   t.after(() => sqlite.close())
