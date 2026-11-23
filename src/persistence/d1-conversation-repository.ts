@@ -1,4 +1,5 @@
 import type { ConversationState } from '../conversation/state.ts'
+import type { BookingImpactRepository, BookingImpactTotals } from '../impact/booking-impact.ts'
 import type {
   Appointment,
   ConversationRepository,
@@ -7,7 +8,7 @@ import type {
   ServiceRequest,
 } from './conversation-repository.ts'
 
-export class D1ConversationRepository implements ConversationRepository {
+export class D1ConversationRepository implements ConversationRepository, BookingImpactRepository {
   private readonly database: D1Database
 
   constructor(database: D1Database) {
@@ -82,13 +83,54 @@ export class D1ConversationRepository implements ConversationRepository {
   async confirmAppointment(input: NewAppointment): Promise<Appointment | null> {
     const id = crypto.randomUUID()
     const result = await this.database.prepare(`
-      INSERT OR IGNORE INTO appointments (id, business_id, customer_id, service_id, professional_id, starts_at, price_in_reais, duration_minutes, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'confirmed')
+      INSERT OR IGNORE INTO appointments
+        (id, business_id, customer_id, service_id, professional_id, starts_at, price_in_reais, duration_minutes, status, automated_at, baseline_seconds)
+      SELECT ?, ?, ?, ?, ?, ?, ?, ?, 'confirmed', ?,
+        CASE WHEN ? IS NOT NULL THEN
+          (SELECT baseline_seconds FROM booking_impact_settings WHERE business_id = ?)
+        END
+      WHERE NOT EXISTS (
+        SELECT 1 FROM appointments
+        WHERE business_id = ?
+          AND professional_id = ?
+          AND status = 'confirmed'
+          AND datetime(starts_at) < datetime(?, '+' || ? || ' minutes')
+          AND datetime(?) < datetime(starts_at, '+' || duration_minutes || ' minutes')
+      )
     `).bind(
       id, input.businessId, input.customerId, input.serviceId, input.professionalId,
       input.startsAt, input.priceInReais, input.durationMinutes,
+      input.automatedAt ?? null, input.automatedAt ?? null, input.businessId,
+      input.businessId, input.professionalId,
+      input.startsAt, input.durationMinutes, input.startsAt,
     ).run()
     return result.meta.changes === 1 ? { ...input, id, status: 'confirmed' } : null
+  }
+
+  async getBookingImpact(businessId: string, after: string, through: string): Promise<BookingImpactTotals> {
+    const totals = await this.database.prepare(`
+      SELECT COUNT(*) AS automatedBookings, COUNT(baseline_seconds) AS estimatedBookings,
+        COALESCE(SUM(baseline_seconds), 0) AS savedSeconds,
+        (SELECT hourly_cost_cents FROM booking_impact_settings WHERE business_id = ?) AS hourlyCostCents
+      FROM appointments
+      WHERE business_id = ? AND automated_at > ? AND automated_at <= ?
+    `).bind(businessId, businessId, after, through).first<BookingImpactTotals>()
+    return totals ?? { automatedBookings: 0, estimatedBookings: 0, savedSeconds: 0, hourlyCostCents: null }
+  }
+
+  async setBookingBaseline(businessId: string, seconds: number, sampleSize: number): Promise<void> {
+    await this.database.prepare(`
+      INSERT INTO booking_impact_settings (business_id, baseline_seconds, sample_size) VALUES (?, ?, ?)
+      ON CONFLICT(business_id) DO UPDATE SET
+        baseline_seconds = excluded.baseline_seconds, sample_size = excluded.sample_size
+    `).bind(businessId, seconds, sampleSize).run()
+  }
+
+  async setBookingHourlyCost(businessId: string, cents: number): Promise<void> {
+    await this.database.prepare(`
+      INSERT INTO booking_impact_settings (business_id, hourly_cost_cents) VALUES (?, ?)
+      ON CONFLICT(business_id) DO UPDATE SET hourly_cost_cents = excluded.hourly_cost_cents
+    `).bind(businessId, cents).run()
   }
 
   async listServiceRequests(businessId: string): Promise<ServiceRequest[]> {

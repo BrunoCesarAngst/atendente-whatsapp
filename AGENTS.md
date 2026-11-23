@@ -77,3 +77,12 @@
   no sandbox e preserve os identificadores recebidos no código.
 - `wrangler secret put --env staging` ativa uma versão do Worker. Siga a
   autorização de publicação acima, inclusive em uma rotação de token.
+
+## Próximo incremento de produto
+
+- Use [o plano do AtendenteG](docs/PROXIMO_INCREMENTO.md) para escolher a
+  próxima entrega testável. A primeira entrega mede o valor da agenda e
+  disponibiliza os comandos do responsável com acesso restrito.
+- Preserve a distinção entre evento observado e estimativa. Vincule métricas
+  ao negócio e registre o efeito no D1 uma única vez por operação concluída.
+  Mantenha os logs operacionais livres de mensagens e dados pessoais.

@@ -1,5 +1,5 @@
 import type { Bindings } from '../env.ts'
-import { logOperationalEvent } from '../logging/logger.ts'
+import { logOperationalEvent, type OperationalLogger } from '../logging/logger.ts'
 import type { ConversationResponse } from '../conversation/responses.ts'
 import { renderWhatsAppResponse } from './renderer.ts'
 
@@ -39,12 +39,16 @@ export async function sendWhatsAppResponse(
   env: Bindings,
   to: string,
   messageResponse: Exclude<ConversationResponse, { type: 'flow' }>,
+  phoneNumberId = env.WHATSAPP_PHONE_NUMBER_ID,
+  log: OperationalLogger = logOperationalEvent,
 ) {
   const url =
     `${getGraphApiBaseUrl(env)}/` +
     `${env.WHATSAPP_GRAPH_API_VERSION}/` +
-    `${env.WHATSAPP_PHONE_NUMBER_ID}/messages`
+    `${encodeURIComponent(phoneNumberId)}/messages`
 
+  log('whatsapp_send_started', 'started')
+  const startedAt = Date.now()
   const response = await fetch(url, {
     method: 'POST',
 
@@ -57,12 +61,13 @@ export async function sendWhatsAppResponse(
   })
 
   if (!response.ok) {
-    logOperationalEvent('whatsapp_send_failed', 'failed', {
+    log('whatsapp_send_failed', 'failed', {
+      durationMs: Date.now() - startedAt,
       httpStatus: response.status,
       ...await getSafeGraphErrorDetails(response),
     })
     throw new Error(`WhatsApp API error ${response.status}`)
   }
 
-  logOperationalEvent('whatsapp_send_succeeded', 'success')
+  log('whatsapp_send_succeeded', 'success', { httpStatus: response.status, durationMs: Date.now() - startedAt })
 }

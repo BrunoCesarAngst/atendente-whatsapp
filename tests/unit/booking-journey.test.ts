@@ -65,3 +65,33 @@ test('não confirma duas reservas para o mesmo profissional e horário', async (
     text: 'Esse horário acabou de ser reservado. Escolha outro horário, por favor.',
   }])
 })
+
+test('não confirma simultaneamente horários sobrepostos para o mesmo profissional', async () => {
+  const { repository, orchestrator } = createSubject()
+  const overlappingSlot = `${date}T09:30:00-03:00`
+
+  for (const [customerId, selectedSlot] of [
+    ['customer-a', slot],
+    ['customer-b', overlappingSlot],
+  ] as const) {
+    await orchestrator.handle(input(customerId, `${customerId}-1`, 'booking:start'))
+    await orchestrator.handle(input(customerId, `${customerId}-2`, 'service:haircut'))
+    await orchestrator.handle(input(customerId, `${customerId}-3`, `date:${date}`))
+    await orchestrator.handle(input(customerId, `${customerId}-4`, `slot:${selectedSlot}`))
+  }
+
+  const [first, second] = await Promise.all([
+    orchestrator.handle(input('customer-a', 'customer-a-5', 'booking:confirm')),
+    orchestrator.handle(input('customer-b', 'customer-b-5', 'booking:confirm')),
+  ])
+
+  assert.deepEqual(first, [{
+    type: 'text',
+    text: 'Seu horário está confirmado para 09:00 em 09/10/2026.',
+  }])
+  assert.deepEqual(second, [{
+    type: 'text',
+    text: 'Esse horário acabou de ser reservado. Escolha outro horário, por favor.',
+  }])
+  assert.equal((await repository.listAppointments(barbershopConfig.id)).length, 1)
+})

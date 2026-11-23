@@ -44,14 +44,24 @@ validação. Os deploys são manuais.
 
 ## Promover para produção
 
+O código-fonte, os testes e os guias podem seguir juntos pelo fluxo de PRs.
+Os recursos ativos dependem do alvo do Wrangler e da configuração de cada
+ambiente. O número de teste e o D1 de homologação pertencem a `env.staging`.
+O alvo raiz usa o D1, o remetente e as credenciais de produção.
+
 1. Abra um PR de `staging` para `main` com o SHA candidato e a evidência de
    validação. Use **Create a merge commit** nessa promoção para preservar
    a relação entre as duas branches. Mantenha `staging` após o merge.
 2. A proteção de `main` exige PR e o check **TypeScript e testes** atualizado.
-   Registre no PR a decisão do desenvolvedor sobre a promoção.
+   Registre no PR a decisão do desenvolvedor sobre a promoção, os recursos
+   de produção a conferir e a ordem das migrations pendentes. Confira
+   o destino com `npx wrangler versions upload --env="" --dry-run --minify`.
+   O dry run valida empacotamento e bindings declarados. Verifique o schema,
+   a configuração da Meta e os segredos de produção em checagens próprias.
 3. O merge deixa a versão disponível em `main`. Para publicar em produção,
    confirme o SHA, as verificações e o alvo raiz, informe o comando
-   `npm run deploy` e aguarde a autorização prevista em [AGENTS.md](../AGENTS.md).
+   `npm run deploy -- --env=""` e aguarde a autorização prevista em
+   [AGENTS.md](../AGENTS.md).
    Migrações remotas e troca de secrets também exigem autorização explícita.
 4. Traga `main` de volta para `staging` quando a base tiver avançado. Com
    ambas sincronizadas e sem commits exclusivos em `staging`, avance-a por

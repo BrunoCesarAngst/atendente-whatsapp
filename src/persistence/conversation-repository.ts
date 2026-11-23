@@ -8,6 +8,7 @@ export type NewAppointment = {
   startsAt: string
   priceInReais: number
   durationMinutes: number
+  automatedAt?: string
 }
 
 export type Appointment = NewAppointment & {

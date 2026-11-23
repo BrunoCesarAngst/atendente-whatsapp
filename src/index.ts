@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 
 import type { Bindings } from './env.ts'
-import { logOperationalEvent } from './logging/logger.ts'
+import { createRequestLogger, logOperationalEvent, type LogDetails } from './logging/logger.ts'
 
 import {
   extractIncomingMessages,
@@ -12,25 +12,14 @@ import {
   sendWhatsAppResponse,
 } from './whatsapp/client.ts'
 import { verifyWhatsAppSignature } from './whatsapp/signature.ts'
-import { getBusinessProfile } from './businesses/profiles.ts'
+import { getBusinessOwners, getBusinessRoutes } from './businesses/profiles.ts'
 import { createJourneyEngine } from './conversation/journey-engine.ts'
 import { ConversationOrchestrator } from './conversation/orchestrator.ts'
-import type { ConversationRepository } from './persistence/conversation-repository.ts'
 import { InMemoryConversationRepository } from './persistence/in-memory-conversation-repository.ts'
 import { D1ConversationRepository } from './persistence/d1-conversation-repository.ts'
+import { handleBookingImpactCommand } from './impact/booking-impact.ts'
 
 const inMemoryRepository = new InMemoryConversationRepository()
-
-function createOrchestrator(
-  repository: ConversationRepository,
-  profileName?: string,
-) {
-  const business = getBusinessProfile(profileName)
-  return new ConversationOrchestrator(
-    repository,
-    createJourneyEngine(repository, business),
-  )
-}
 
 const app = new Hono<{
   Bindings: Bindings
@@ -118,6 +107,10 @@ app.get('/webhook', (c) => {
 //
 
 app.post('/webhook', async (c) => {
+  const startedAt = Date.now()
+  const traceId = crypto.randomUUID()
+  const log = createRequestLogger(traceId)
+  log('webhook_received', 'started')
   const rawBody = await c.req.arrayBuffer()
   const signature = c.req.header('x-hub-signature-256')
   const isAuthentic = await verifyWhatsAppSignature(
@@ -127,59 +120,91 @@ app.post('/webhook', async (c) => {
   )
 
   if (!isAuthentic) {
-    logOperationalEvent('webhook_signature_rejected', 'rejected')
+    log('webhook_signature_rejected', 'rejected', { httpStatus: 401 })
     return c.text('UNAUTHORIZED', 401)
   }
 
-  let payload: WhatsAppWebhookPayload
+  log('webhook_authenticated', 'success')
+  let messages: ReturnType<typeof extractIncomingMessages>
 
   try {
-    payload = JSON.parse(
+    const payload = JSON.parse(
       new TextDecoder().decode(rawBody),
     ) as WhatsAppWebhookPayload
+    messages = extractIncomingMessages(payload)
   } catch {
-    logOperationalEvent('webhook_invalid_json', 'rejected')
+    log('webhook_invalid_json', 'rejected', { httpStatus: 400 })
     return c.text('BAD_REQUEST', 400)
   }
 
-  const messages = extractIncomingMessages(payload)
-
   if (messages.length === 0) {
-    logOperationalEvent('webhook_ignored', 'ignored')
+    log('webhook_ignored', 'ignored', { httpStatus: 200, messageCount: 0 })
     return c.text('EVENT_RECEIVED')
   }
 
+  log('webhook_acknowledged', 'success', { httpStatus: 200, messageCount: messages.length })
+  let phase: LogDetails['phase'] = 'configuration'
+  let messageIndex: number | undefined
   c.executionCtx.waitUntil(
     (async () => {
-      const repository = c.env.DB
+      const d1Repository = c.env.DB
         ? new D1ConversationRepository(c.env.DB)
-        : inMemoryRepository
-      const business = getBusinessProfile(c.env.BUSINESS_PROFILE)
-      const orchestrator = createOrchestrator(repository, c.env.BUSINESS_PROFILE)
+        : null
+      const repository = d1Repository ?? inMemoryRepository
+      const routes = getBusinessRoutes(
+        c.env.WHATSAPP_PHONE_NUMBER_ID, c.env.BUSINESS_PROFILE, c.env.WHATSAPP_BUSINESS_PROFILES,
+      )
+      const owners = getBusinessOwners(
+        c.env.WHATSAPP_PHONE_NUMBER_ID, c.env.WHATSAPP_OWNER_ID, c.env.WHATSAPP_OWNER_IDS,
+      )
 
       if (!c.env.DB) {
-        logOperationalEvent('conversation_storage_not_configured', 'failed')
+        log('conversation_storage_not_configured', 'failed')
       }
 
-      for (const message of messages) {
-        const responses = await orchestrator.handle({
+      for (const [index, message] of messages.entries()) {
+        messageIndex = index + 1
+        const messageLog = createRequestLogger(traceId, messageIndex)
+        phase = 'conversation'
+        messageLog('message_started', 'started', { messageType: message.type })
+        const phoneId = message.phoneNumberId
+        const business = phoneId ? routes.get(phoneId) : undefined
+        if (!business || !phoneId) {
+          messageLog('message_route_ignored', 'ignored')
+          continue
+        }
+        const orchestrator = new ConversationOrchestrator(repository, createJourneyEngine(repository, business))
+        const receivedAt = new Date().toISOString()
+        const ownerResponses = d1Repository && business.mode === 'appointment' &&
+          message.from === owners?.get(phoneId)
+          ? await handleBookingImpactCommand(d1Repository, {
+              businessId: business.id, ownerId: message.from, messageId: message.id,
+              receivedAt,
+              ...(message.type === 'text' ? { text: message.text } : { interactiveId: message.interactiveId }),
+            }, messageLog)
+          : null
+        const responses = ownerResponses ?? await orchestrator.handle({
           businessId: business.id,
           customerId: message.from,
           messageId: message.id,
-          receivedAt: new Date().toISOString(),
+          receivedAt,
           ...(message.type === 'text'
             ? { text: message.text }
             : { interactiveId: message.interactiveId }),
-        })
+        }, messageLog)
 
+        phase = 'outbound'
         for (const response of responses) {
           if (response.type !== 'flow') {
-            await sendWhatsAppResponse(c.env, message.from, response)
+            await sendWhatsAppResponse(c.env, message.from, response, phoneId, messageLog)
           }
         }
+        messageLog('message_finished', 'success', { responseCount: responses.length })
       }
+      log('webhook_finished', 'success', { durationMs: Date.now() - startedAt })
     })().catch(() => {
-      logOperationalEvent('message_processing_failed', 'failed')
+      createRequestLogger(traceId, messageIndex)('message_processing_failed', 'failed', { phase })
+      log('webhook_finished', 'failed', { durationMs: Date.now() - startedAt })
     }),
   )
 

@@ -14,11 +14,18 @@
 		{
 			"binding": "DB",
 			"database_name": "atendenteg-production",
-			"database_id": "3f897ecd-086f-4ab7-882a-09ca17beef23"
+			"database_id": "cd6b91cc-5b3f-49e6-b24c-8316d7a2582a"
 		}
 	],
 	"env": {
 		"staging": {
+			"observability": {
+				"enabled": true,
+				"logs": {
+					"enabled": true,
+					"invocation_logs": false
+				}
+			},
 			"vars": {
 				"WHATSAPP_PHONE_NUMBER_ID": "1329301080272794",
 				"WHATSAPP_GRAPH_API_VERSION": "v25.0",

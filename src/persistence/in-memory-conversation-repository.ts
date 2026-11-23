@@ -6,6 +6,7 @@ import type {
   ServiceRequest,
 } from './conversation-repository.ts'
 import type { ConversationState } from '../conversation/state.ts'
+import { appointmentsOverlap } from '../conversation/appointment-overlap.ts'
 
 export class InMemoryConversationRepository
   implements ConversationRepository {
@@ -47,8 +48,13 @@ export class InMemoryConversationRepository
     const conflict = this.appointments.some((appointment) =>
       appointment.businessId === input.businessId &&
       appointment.professionalId === input.professionalId &&
-      appointment.startsAt === input.startsAt &&
-      appointment.status === 'confirmed',
+      appointment.status === 'confirmed' &&
+      appointmentsOverlap(
+        input.startsAt,
+        input.durationMinutes,
+        appointment.startsAt,
+        appointment.durationMinutes,
+      ),
     )
 
     if (conflict) {

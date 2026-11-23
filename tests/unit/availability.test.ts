@@ -5,7 +5,7 @@ import { barbershopConfig } from '../../src/barbershop/config.ts'
 import { AvailabilityService } from '../../src/conversation/availability.ts'
 import { InMemoryConversationRepository } from '../../src/persistence/in-memory-conversation-repository.ts'
 
-test('oferece horários da agenda e remove horário confirmado', async () => {
+test('não oferece intervalos que se sobrepõem e mantém horários adjacentes', async () => {
   const repository = new InMemoryConversationRepository()
   const availability = new AvailabilityService(repository, barbershopConfig)
 
@@ -24,4 +24,6 @@ test('oferece horários da agenda e remove horário confirmado', async () => {
 
   const after = await availability.listSlots('2026-10-09', 'haircut')
   assert.ok(!after.includes('2026-10-09T09:00:00-03:00'))
+  assert.ok(!after.includes('2026-10-09T09:30:00-03:00'))
+  assert.ok(after.includes('2026-10-09T10:00:00-03:00'))
 })
