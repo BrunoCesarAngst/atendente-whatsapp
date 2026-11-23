@@ -58,7 +58,7 @@ function actionId(messages: MockMessage[], prefix: string) {
 
 async function sendIncoming(secret: string, messageId: string, message: Record<string, unknown>) {
   const body = JSON.stringify({
-    entry: [{ changes: [{ value: { messages: [{
+    entry: [{ changes: [{ value: { metadata: { phone_number_id: await readLocalVariable('WHATSAPP_PHONE_NUMBER_ID') }, messages: [{
       from: 'local-smoke-customer',
       id: messageId,
       ...message,

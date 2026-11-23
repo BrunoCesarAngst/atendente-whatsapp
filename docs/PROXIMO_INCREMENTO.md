@@ -105,6 +105,26 @@ equivalência de tempo**. As quatro reservas sem referência ficam visíveis.
 
 ## Entrega 1 — Separar dois estabelecimentos fictícios
 
+**Roteamento, reservas e relatórios validados localmente.** O Worker usa
+`metadata.phone_number_id` para selecionar o perfil e responder pelo mesmo
+número empresarial. Os testes de integração validam catálogos diferentes,
+duas reservas no mesmo horário para o mesmo cliente fictício e o acesso
+de cada responsável ao relatório da própria empresa.
+
+Para a simulação local, use o mock da Graph API e configure em `.dev.vars`
+`WHATSAPP_BUSINESS_PROFILES={"barbearia-teste":"barbershop","salao-teste":"salon"}`.
+Cada chave é um ID de remetente. Cada perfil configurado deve ter um ID de
+negócio distinto. Use `npm test` para repetir o ensaio com os dois números.
+O piloto com um número usa `WHATSAPP_PHONE_NUMBER_ID` e `BUSINESS_PROFILE`
+quando o mapa está ausente. O mock usa uma credencial fictícia compartilhada.
+Configure também `WHATSAPP_OWNER_IDS={"barbearia-teste":"responsavel-barbearia","salao-teste":"responsavel-salao"}`
+em `.dev.vars` para o teste. Em ambiente remoto, trate esse mapa como
+secret. Quando o mapa é fornecido, ele define todos os responsáveis.
+O Worker com um único número continua usando `WHATSAPP_OWNER_ID` na ausência
+do mapa. Um mapa inválido bloqueia os comandos do responsável e mantém
+o atendimento público. Credenciais individuais da Meta ainda fazem parte
+da ativação de empresas reais.
+
 Implemente cadastro e resolução do negócio a partir de
 `metadata.phone_number_id` de webhooks autenticados. Cada negócio tem ID,
 catálogo, fuso, horários, credenciais protegidas e responsáveis autorizados.

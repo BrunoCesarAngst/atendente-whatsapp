@@ -39,12 +39,13 @@ export async function sendWhatsAppResponse(
   env: Bindings,
   to: string,
   messageResponse: Exclude<ConversationResponse, { type: 'flow' }>,
+  phoneNumberId = env.WHATSAPP_PHONE_NUMBER_ID,
   log: OperationalLogger = logOperationalEvent,
 ) {
   const url =
     `${getGraphApiBaseUrl(env)}/` +
     `${env.WHATSAPP_GRAPH_API_VERSION}/` +
-    `${env.WHATSAPP_PHONE_NUMBER_ID}/messages`
+    `${encodeURIComponent(phoneNumberId)}/messages`
 
   log('whatsapp_send_started', 'started')
   const startedAt = Date.now()

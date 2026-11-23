@@ -36,7 +36,7 @@ async function postMessage(
   message: Record<string, unknown>,
   pending: Promise<unknown>[],
 ) {
-  const body = JSON.stringify({ entry: [{ changes: [{ value: { messages: [{
+  const body = JSON.stringify({ entry: [{ changes: [{ value: { metadata: { phone_number_id: 'phone-id' }, messages: [{
     from: 'pool-integration-customer', id: messageId, ...message,
   }] } }] }] })
   const response = await app.request('/webhook', {

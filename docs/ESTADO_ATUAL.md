@@ -30,6 +30,11 @@ passou a usar a credencial sem expiração programada de
 desenvolvedor completou a jornada novamente. O D1 registrou oito mensagens
 novas da mesma conversa e uma nova reserva confirmada.
 
+Depois desse piloto, a medição de valor e o monitor de logs chegaram ao
+Worker de homologação. O roteamento por número empresarial, com reserva
+e relatório isolados por empresa, passou no ensaio local com dois negócios
+fictícios. O reteste remoto dessa última entrega é o próximo marco.
+
 ## Estado por ambiente
 
 | Ambiente | Estado | O que foi comprovado | Limite atual |
@@ -193,6 +198,46 @@ Esse é o estado validado em 23 de novembro. As contagens são evidências da
 execução daquele dia. Compare os incrementos a partir de uma nova linha de
 base em futuras validações.
 
+### 10. Medição de valor em homologação
+
+O PR #3 levou ao GitHub a migration `0003_booking_impact.sql`, os comandos
+`/calibrar`, `/custo-hora` e `/valor` e o plano de evolução. A migration foi
+aplicada ao D1 de `staging` e o responsável foi autorizado pelo secret
+`WHATSAPP_OWNER_ID`. As reservas existentes foram preservadas.
+
+O ensaio registrou duas reservas automáticas. Uma delas usou referência de
+120 segundos e custo-hora de R$ 60,00. Isso corresponde a 2 minutos
+estimados e R$ 2,00 de equivalência de tempo. Cada reserva conserva a
+referência vigente na confirmação. Consulte a
+[descrição da medida](PROXIMO_INCREMENTO.md) para interpretar o resultado.
+
+### 11. Monitor operacional em homologação
+
+O PR #4 publicou o monitor na branch `staging` e o Worker recebeu o commit
+`c1dffe1`. O Terminal do Mac mostrou tanto a recusa de assinatura
+(`HTTP 401`) quanto a entrada real autenticada, seguida da gravação da
+conversa e do aceite do envio pela Meta.
+
+O comando `npm run logs:staging` usa a configuração de homologação e
+mostra eventos filtrados com um rastro aleatório por webhook. O
+[guia do monitor](LOGS_OPERACIONAIS.md) também explica como acompanhar os
+logs enquanto se trabalha em outra branch.
+
+### 12. Isolamento por número empresarial
+
+O webhook passou a selecionar a empresa por `metadata.phone_number_id`.
+Testes com a **Barbearia Central** e o **Salão Aurora** confirmaram
+catálogos distintos, resposta pelo remetente correto e duas reservas no
+mesmo horário para o mesmo cliente fictício. Cada responsável viu somente
+o relatório correspondente, com referências de 2 e 5 minutos. O ensaio
+bloqueou acesso cruzado e uma tentativa de recalibrar a outra empresa.
+
+O código unifica o roteamento com o rastro operacional. Uma mensagem sem
+rota configurada gera um evento seguro para diagnóstico. Os 34 testes
+automatizados passaram com SQLite local e Graph simulada. O Worker remoto
+segue na versão de logs identificada acima até a publicação e validação
+autorizadas dessa entrega.
+
 ## Decisões tomadas e por quê
 
 | Decisão | Motivo | Estado |
@@ -246,10 +291,9 @@ Veja as ADRs 010 a 013 em [DECISIONS.md](DECISIONS.md).
   `origin/main`.
 - Novas mudanças partem de `staging` e passam pelo check **TypeScript e testes**.
   Siga o [fluxo de Git](WORKFLOW_GIT.md) para homologar e promover uma versão.
-- O commit de homologação anterior reuniu staging, política pública, testes e
-  roteiro inicial.
-- Esta atualização histórica deve ser revisada e publicada no próximo commit
-  para manter o repositório como fonte central de continuidade.
+- O histórico da homologação está nos PRs da medição de valor e dos logs.
+  A branch `staging` reúne o código candidato. O Worker remoto muda por
+  publicação manual de uma revisão aprovada.
 
 ## Leitura recomendada para retomar
 

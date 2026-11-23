@@ -9,6 +9,7 @@ export const operationalEvents = {
   webhook_acknowledged: 'Recebimento confirmado',
   webhook_finished: 'Processamento do webhook encerrado',
   conversation_storage_not_configured: 'D1 indisponível na configuração',
+  message_route_ignored: 'Número empresarial sem rota configurada',
   message_started: 'Mensagem em processamento',
   message_duplicate: 'Mensagem repetida ignorada',
   conversation_human_mode: 'Conversa sob atendimento humano',

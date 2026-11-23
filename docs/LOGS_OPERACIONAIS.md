@@ -4,6 +4,13 @@ Use `npm run logs:staging` em um terminal do projeto com Node.js 22, dependênci
 instaladas, `jq` e Wrangler autenticado na Cloudflare. Deixe o terminal aberto
 durante os testes. Use Ctrl+C para encerrar a sessão.
 
+Confira a branch do diretório onde executou o npm. Se aparecer
+`Missing script: "logs:staging"`, use uma cópia atualizada de `staging`
+com o monitor. A partir de outro diretório, rode
+`npm --prefix /caminho/da/copia-de-staging run logs:staging`.
+Isso permite acompanhar os logs enquanto a branch de trabalho contém
+outras alterações.
+
 ## Ler o que aconteceu
 
 Cada linha mostra o horário de Brasília, o resultado, o evento, um rastro
@@ -20,6 +27,7 @@ uma invocação e muda a cada novo webhook, inclusive em uma reentrega.
 | Envio aceito pela Meta | A API aceitou o envio. Para comprovar entrega, confira o celular. |
 | Falha no envio à Meta | Use HTTP, código e subcódigo para investigar o erro. Um erro de transporte pode aparecer como falha de processamento na etapa envio. |
 | Mensagem repetida ignorada ou conversa sob atendimento humano | O fluxo encerrou a automação por deduplicação ou porque a conversa já está em atendimento humano. |
+| Número empresarial sem rota configurada | O webhook foi recebido, mas esse número ficou fora do processamento. Esse evento está disponível na entrega de roteamento por empresa. |
 | Processamento encerrado | Mostra a duração total do trabalho e o resultado do webhook. |
 
 Para observar um ciclo completo, mande `oi` ao número de teste e inicie um

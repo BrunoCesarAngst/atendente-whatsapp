@@ -158,3 +158,17 @@ A equivalência em reais usa o custo-hora opcional como referência. A consulta
 e as alterações de calibração ficam restritas ao responsável que envia uma
 mensagem autenticada ao número configurado. Essa persistência usa o binding
 D1 existente e mantém a medição fora dos logs operacionais.
+
+## ADR-015 — Resolver empresa e responsável pelo número empresarial
+
+**Status:** Implementada e validada localmente
+
+O adaptador resolve a empresa pelo ID do telefone que recebeu o webhook
+autenticado e responde pelo mesmo remetente. O mapa de perfis exige IDs
+de negócio distintos. Um número sem rota é ignorado.
+
+As permissões do responsável são conferidas pelo remetente de entrada
+e pelo número empresarial. Dados de reservas, calibração e relatório
+usam o ID do negócio. O mapa de responsáveis é protegido como secret.
+Quando esse mapa está ausente, o responsável já configurado continua
+vinculado ao número principal de homologação.

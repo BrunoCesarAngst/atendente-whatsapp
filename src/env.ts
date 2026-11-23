@@ -1,7 +1,9 @@
-export type Bindings = Omit<CloudflareBindings, 'DB' | 'WHATSAPP_GRAPH_API_BASE_URL' | 'BUSINESS_PROFILE' | 'WHATSAPP_OWNER_ID'> & {
+export type Bindings = Omit<CloudflareBindings, 'DB' | 'WHATSAPP_GRAPH_API_BASE_URL' | 'BUSINESS_PROFILE' | 'WHATSAPP_OWNER_ID' | 'WHATSAPP_OWNER_IDS' | 'WHATSAPP_BUSINESS_PROFILES'> & {
   WHATSAPP_APP_SECRET: string
   WHATSAPP_OWNER_ID?: string
+  WHATSAPP_OWNER_IDS?: string
   DB?: D1Database
   WHATSAPP_GRAPH_API_BASE_URL?: string
   BUSINESS_PROFILE?: string
+  WHATSAPP_BUSINESS_PROFILES?: string
 }
