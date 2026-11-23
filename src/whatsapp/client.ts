@@ -57,7 +57,7 @@ export async function sendWhatsAppResponse(
       'Content-Type': 'application/json',
     },
 
-    body: JSON.stringify(renderWhatsAppResponse(to, messageResponse)),
+    body: JSON.stringify(renderWhatsAppResponse(to, messageResponse, env.APP_ENV)),
   })
 
   if (!response.ok) {

@@ -38,16 +38,25 @@ function assertOptionCount(
 export function renderWhatsAppResponse(
   to: string,
   response: Exclude<ConversationResponse, { type: 'flow' }>,
+  environment?: string,
 ): WhatsAppMessagePayload {
+  const environmentLabel = environment === 'staging' ? '🧪 Homologação'
+    : environment === 'development' ? '🛠️ Desenvolvimento' : undefined
+
   if (response.type === 'text') {
     return {
       messaging_product: 'whatsapp',
       recipient_type: 'individual',
       to,
       type: 'text',
-      text: { preview_url: false, body: response.text },
+      text: {
+        preview_url: false,
+        body: environmentLabel ? `${response.text}\n\n${environmentLabel}` : response.text,
+      },
     }
   }
+
+  const footer = environmentLabel ? { footer: { text: environmentLabel } } : {}
 
   if (response.type === 'buttons') {
     assertOptionCount(response.options, 3, 'buttons')
@@ -60,6 +69,7 @@ export function renderWhatsAppResponse(
       interactive: {
         type: 'button',
         body: { text: response.text },
+        ...footer,
         action: {
           buttons: response.options.map((option) => ({
             type: 'reply',
@@ -80,6 +90,7 @@ export function renderWhatsAppResponse(
     interactive: {
       type: 'list',
       body: { text: response.text },
+      ...footer,
       action: {
         button: response.buttonLabel,
         sections: [{
