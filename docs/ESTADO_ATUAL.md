@@ -1,6 +1,7 @@
 # Estado atual e histórico de desenvolvimento
 
-**Atualizado em:** 16 de novembro de 2026  
+**Atualizado em:** 23 de novembro de 2026
+
 **Objetivo deste documento:** permitir que qualquer pessoa retome o projeto sem
 repetir tentativas, confundir ambientes ou perder o contexto das decisões.
 
@@ -17,36 +18,37 @@ O AtendenteG já possui um núcleo local validado para três tipos de negócio:
 - **limpeza de piscina:** faz triagem e cria solicitação pendente;
 - **jardinagem/corte de grama:** faz triagem e cria solicitação pendente.
 
-Também existe uma homologação remota isolada na Cloudflare, conectada a um app
-Meta isolado e ao número de teste da Meta. A cadeia de **entrada** já foi
-provada: uma mensagem real chegou ao webhook, teve a assinatura validada, criou
-conversa e foi deduplicada no D1 de homologação.
+O **agendamento por WhatsApp real está validado em `staging`**. O app
+**AtendenteG Homologação** usa o remetente de teste da Meta e o celular
+pessoal do desenvolvedor como destinatário. O webhook recebe e autentica as
+mensagens, o Worker responde pela Cloud API e o D1 persiste a reserva.
 
-O único bloqueio atual é a **resposta automática de saída** para o telefone
-pessoal usado como destinatário de teste. A Meta devolve o código operacional
-`131030`, que indica que o sandbox não reconhece esse destinatário como
-autorizado, apesar de ele aparecer selecionado no painel. Esse comportamento
-foi reproduzido fora do Worker, portanto não é uma falha local do projeto.
+O erro `131030` foi resolvido para o desenvolvedor ao verificar no painel da
+Meta o formato exato do número recebido pelo webhook. Depois, o Worker
+passou a usar a credencial sem expiração programada de
+`atendenteg-staging-runtime`, com escopo de envio. Após essa troca, o
+desenvolvedor completou a jornada novamente. O D1 registrou oito mensagens
+novas da mesma conversa e uma nova reserva confirmada.
 
 ## Estado por ambiente
 
 | Ambiente | Estado | O que foi comprovado | Limite atual |
 | --- | --- | --- | --- |
 | Local | Pronto | Worker, D1, mock da Cloud API, jornadas e persistência | Não prova entrega real da Meta |
-| Homologação | Ativo e isolado | Callback, assinatura, webhook de entrada, D1 remoto e inscrição da conta de teste | Resposta de saída bloqueada pelo sandbox para o destinatário atual |
+| Homologação | Agendamento validado ponta a ponta | Callback, assinatura, inscrição da conta de teste, recebimento, envio com token de usuário do sistema e reserva confirmada | Ensaio realizado com perfil de barbearia e o próprio desenvolvedor como destinatário |
 | Produção | Não utilizada neste piloto | Nada foi alterado nesta etapa | Não deve ser usada para testes |
 
 ## Arquitetura que está em uso
 
 ```text
-Cliente no WhatsApp
+WhatsApp do desenvolvedor
   → Cloud API da Meta
   → /webhook do Worker de staging
   → validação de assinatura
   → orquestrador de conversa
   → D1 de staging
   → Cloud API da Meta
-  → cliente no WhatsApp
+  → WhatsApp do desenvolvedor
 ```
 
 Separações importantes:
@@ -129,21 +131,67 @@ As verificações atuais passam: geração de tipos, TypeScript, checagem de dif
   impulso. Qualquer retorno ao app comum ou uso do número como número comercial
   precisa ser uma decisão separada do proprietário.
 
-### 7. Falha atual de saída
+### 7. Primeiro diagnóstico da falha de saída
 
 - A mensagem `oi` enviada pelo telefone de teste chega ao Worker e cria estado
   no D1.
 - Ao responder, a Cloud API retorna HTTP 400 com código `131030`.
-- O destinatário foi removido e adicionado novamente na Meta; um token novo foi
-  gerado e salvo no cofre de homologação.
-- O erro permaneceu.
+- O destinatário original foi removido e adicionado novamente na Meta; um token
+  novo foi gerado e salvo no cofre de homologação. O erro permaneceu.
 - Um envio-controlado, fora do Worker, com o token atual e o destinatário que
   iniciou a conversa reproduziu o mesmo código.
+- Em 17 de novembro, um segundo destinatário, com WhatsApp já existente e sem
+  alteração de registro na Cloud API, foi autorizado no sandbox. Ele enviou uma
+  mensagem que chegou ao Worker e foi persistida no D1, mas a resposta pela
+  Graph API retornou novamente HTTP 400 / `131030`.
 
-**Conclusão:** a falha não está no webhook, D1, jornada, token armazenado ou
-configuração local do Worker. Ela está no reconhecimento do destinatário pela
-lista de teste da Meta, provavelmente em estado transitório ou inconsistente
-após a migração para WhatsApp Business.
+Naquele momento, os ensaios isolaram a falha na saída da Graph API. O
+diagnóstico específico do número do desenvolvedor veio na etapa seguinte.
+
+### 8. Separação dos erros de credencial e de destinatário
+
+No reteste do dia 23, o `oi` chegou e ficou registrado. A chamada de saída
+retornou `401 / 190`, indicando rejeição da credencial. Um token local
+conseguia consultar o número de teste e foi usado na primeira rotação.
+O envio passou a retornar `400 / 100`. Texto simples e **Hello World** também
+falharam quando enviados diretamente pela Graph API. A consulta a `/app`
+mostrou que o token local pertencia a outro app. Isso mostrou por que
+validar apenas o acesso de leitura ao número era insuficiente.
+
+O token temporário emitido pelo app **AtendenteG Homologação** confirmou o
+app, o acesso ao remetente e a permissão de envio. Com ele, a Graph API
+voltou a retornar `400 / 131030`. A comparação privada mostrou que o painel
+tinha o número do desenvolvedor **com** o nono dígito, enquanto
+`messages[].from` chegava **sem** esse dígito. Foi cadastrado o formato
+exato do webhook no mesmo remetente de teste. O desenvolvedor digitou o
+código de verificação diretamente no painel.
+
+O **Hello World** chegou ao celular. Na jornada seguinte, o Worker registrou
+seis envios bem-sucedidos e o D1 gravou uma reserva confirmada. Uma recusa
+posterior ocorreu em outra conversa, identificada por comparação de
+contagens sem expor destinatários. O teste do desenvolvedor ficou no estado
+`booked`. O ajuste foi feito na lista de destinatários do sandbox.
+
+### 9. Token de longa duração e reteste
+
+- Foi criado o usuário do sistema **atendenteg-staging-runtime** com papel
+  **Employee** no portfólio do app de homologação. Foram atribuídos o app,
+  a conta de mensagens vinculada e a conta WhatsApp de teste. Os ativos e
+  permissões por categoria estão no [roteiro da Meta](HOMOLOGACAO_META.md#credencial-de-envio-de-longa-duração).
+- O token foi emitido para **AtendenteG Homologação**, com **Nunca** como
+  expiração e apenas a permissão `whatsapp_business_messaging`. A Graph API
+  confirmou app, usuário e remetente. Um envio direto de **Hello World**
+  foi aceito antes da atualização do secret.
+- Após aprovação explícita, a Cloudflare confirmou a ativação de
+  `WHATSAPP_ACCESS_TOKEN` no Worker de `staging`. O desenvolvedor repetiu
+  o fluxo pelo celular. No D1, as mensagens processadas passaram de 22
+  para 30, todas as oito novas pertenciam à mesma conversa, e as reservas
+  confirmadas passaram de uma para duas. O estado da conversa ficou
+  `booked`.
+
+Esse é o estado validado em 23 de novembro. As contagens são evidências da
+execução daquele dia. Compare os incrementos a partir de uma nova linha de
+base em futuras validações.
 
 ## Decisões tomadas e por quê
 
@@ -154,11 +202,11 @@ após a migração para WhatsApp Business.
 | Usar número de teste da Meta | Evitar mexer nos números dos negócios participantes | Implementada |
 | Inscrever cada conta de mensagens no app | Callback válido não garante entrega de eventos | Implementada |
 | Não usar o número pessoal como número comercial agora | Registro tradicional pode desconectar o app existente | Mantida |
-| Não migrar número pessoal apenas para ser destinatário de sandbox | Não é necessário e pode criar confusão operacional | Nova regra para o futuro |
-| Esperar até o próximo dia antes de novas tentativas | Dar tempo à Meta para propagar a nova autorização | Pendente |
+| Preservar o celular pessoal como destinatário | O mesmo número funcionou com o formato verificado recebido pelo webhook | Validada |
+| Conferir app, usuário e remetente antes da troca de credencial | Um token de outro app passou na leitura do remetente e falhou no envio | Validada |
+| Usar token do usuário do sistema dedicado ao envio | Evita a expiração recorrente do token temporário de configuração | Ativa em staging |
 
-Veja as decisões arquiteturais formais em `DECISIONS.md`, especialmente
-ADR-010 e ADR-011.
+Veja as ADRs 010 a 013 em [DECISIONS.md](DECISIONS.md).
 
 ## O que não deve ser repetido
 
@@ -176,25 +224,21 @@ ADR-010 e ADR-011.
 7. Não registrar texto, telefone, token, App Secret, assinatura ou payload
    completo em logs e documentos.
 
-## Próxima retomada: roteiro exato
+## Retomada em desenvolvimento
 
-1. Não alterar a configuração atual durante a espera.
-2. No próximo dia, executar primeiro um **envio-controlado** com a credencial
-   atual para o destinatário reautorizado.
-3. Se a Meta aceitar, iniciar o fluxo de barbearia do começo: saudação, serviço,
-   data, horário e confirmação.
-4. Confirmar no D1 uma conversa, as mensagens processadas esperadas e uma única
-   reserva confirmada.
-5. Reenviar a confirmação para validar que não há reserva duplicada.
-6. Se o código `131030` persistir, não mexer no número pessoal nem em produção.
-   Escolher uma alternativa deliberada:
-   - usar outro WhatsApp existente de pessoa autorizada somente como destinatário
-     de teste; ou
-   - criar uma configuração de teste nova e repetir o piloto com recursos
-     isolados.
-
-Um segundo telefone usado apenas como destinatário não precisa ser WhatsApp
-Business, não será registrado na API e não terá seu atendimento alterado.
+1. Para mudanças no código, siga a [validação local](LOCAL_VALIDATION.md)
+   com Worker, D1 e Graph API simulados.
+2. Para retestar o WhatsApp real, use o remetente, o próprio celular e a
+   credencial dedicados que já estão ativos. Compare as contagens do D1
+   antes e depois da jornada.
+3. Se a homologação precisar ser montada novamente, siga a ordem em
+   [HOMOLOGACAO_META.md](HOMOLOGACAO_META.md). Confirme o vínculo entre app,
+   conta de mensagens, remetente, destinatário e credencial antes de
+   publicar qualquer alteração.
+4. Se surgir um erro de saída, use a tabela de diagnóstico do roteiro.
+   O `190` pede checagem da credencial. O `100` pede validação de identidade
+   e teste direto. O `131030` pede verificar o cadastro para o formato
+   exato recebido.
 
 ## Repositório e rastreabilidade
 

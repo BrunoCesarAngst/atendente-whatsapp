@@ -45,3 +45,23 @@
 - Antes de qualquer publicação solicitada explicitamente, informe os comandos,
   o ambiente-alvo e os resultados de validação; aguarde autorização explícita
   para executar a publicação.
+
+## Desenvolvimento e homologação no WhatsApp
+
+- Leia [o estado atual](docs/ESTADO_ATUAL.md) e
+  [o roteiro da Meta](docs/HOMOLOGACAO_META.md) antes de mexer no painel, no
+  webhook ou nas credenciais de homologação. Use
+  [a validação local](docs/LOCAL_VALIDATION.md) para desenvolver com dados
+  fictícios e testar sem chamar a Meta.
+- Em `staging`, use o app **AtendenteG Homologação**, o remetente de teste da
+  Meta e o número do desenvolvedor como destinatário. O roteiro cobre a
+  inscrição da conta de mensagens, a verificação do destinatário e o token do
+  usuário do sistema. Preserve o número pessoal como destinatário e evite
+  envolver números de terceiros.
+- Ao investigar saída, verifique primeiro a identidade do app e do remetente
+  vinculados ao token. Para o código `131030`, compare o cadastro com o
+  identificador exato do webhook de forma privada. No piloto, o cadastro tinha
+  o nono dígito e o identificador recebido vinha sem ele. Corrija o cadastro
+  no sandbox e preserve os identificadores recebidos no código.
+- `wrangler secret put --env staging` ativa uma versão do Worker. Siga a
+  autorização de publicação acima, inclusive em uma rotação de token.

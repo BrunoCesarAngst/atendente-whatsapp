@@ -26,7 +26,7 @@ em Git, documentação executável, fixtures, logs ou mensagens de erro.
 
 ## ADR-004 — Segurança do webhook antes de evolução funcional
 
-**Status:** Em implementação planejada
+**Status:** Implementada e validada em homologação
 
 O webhook deve validar `X-Hub-Signature-256` sobre os bytes originais do corpo
 antes de processar eventos. A decisão e os critérios estão documentados em
@@ -51,16 +51,15 @@ publicação só ocorre mediante pedido explícito do proprietário na conversa 
 
 ## ADR-007 — Persistência de agendamentos somente com fronteira própria
 
-**Status:** Em implementação local
+**Status:** Implementada e validada localmente e em homologação
 
-A jornada de agendamento proposta prevê D1 para conversas e reservas. Caso seja
-implementada, o domínio dependerá de uma abstração de repositório e o adaptador
-Cloudflare/D1 ficará isolado. A decisão ainda depende da execução e validação de
+A jornada usa D1 para conversas e reservas. O domínio depende de uma abstração
+de repositório e o adaptador Cloudflare/D1 fica isolado. Os critérios estão em
 `specs/002-booking-journey/`.
 
-Uma migration e um adaptador D1 foram validados somente em cópias locais. O
-binding `DB` está configurado para permitir essa simulação, mas nenhuma migration
-remota foi executada e esse fato não comprova o estado do banco remoto.
+As migrations foram exercitadas localmente e aplicadas ao D1 de `staging`.
+O ensaio real confirmou a persistência de conversas e reservas nesse ambiente.
+Veja [ESTADO_ATUAL.md](ESTADO_ATUAL.md) para as evidências do piloto.
 
 ## ADR-008 — Mock local explícito para a Cloud API do WhatsApp
 
@@ -90,8 +89,9 @@ ser validados localmente sem assumir um canal operacional inexistente.
 O callback do app e o campo `messages` não bastam para que a Meta entregue
 eventos de uma conta de mensagens (WABA). Cada conta, inclusive a conta de
 teste criada na Etapa 1 da Meta, deve ser inscrita explicitamente no app de
-homologação pelo fluxo `subscribed_apps`, com token temporário ou permanente
-autorizado para aquela mesma conta.
+homologação pelo fluxo `subscribed_apps`, com uma credencial de configuração
+autorizada para aquela mesma conta. O token do Worker tem apenas permissão de
+envio e fica fora dessa operação.
 
 O procedimento, a distinção entre callback, campo e inscrição, e os sinais de
 diagnóstico estão em `docs/HOMOLOGACAO_META.md`. A aprovação exige uma mensagem
@@ -109,8 +109,36 @@ registrados na Cloud API. Uma migração de WhatsApp comum para WhatsApp Busines
 só deve ser considerada diante de uma necessidade de negócio independente,
 como coexistência futura, com avaliação de impacto e plano de reversão.
 
-No piloto inicial, a migração de um número pessoal ocorreu antes de ser
-necessária e coincidiu com um estado de autorização inconsistente da Meta para
-aquele destinatário. A partir desta decisão, o piloto deve preferir um número
-de teste sem migração recente. O número pessoal já migrado não será alterado
-sem decisão explícita do proprietário.
+O remetente da homologação é o número de teste fornecido pela Meta. O número
+do desenvolvedor é o destinatário verificado. No piloto, a migração do número
+pessoal foi prematura e o mesmo número funcionou quando o cadastro da Meta
+passou a corresponder ao identificador recebido pelo webhook. Uma mudança no
+WhatsApp pessoal exige decisão separada do proprietário.
+
+## ADR-012 — Preservar o identificador do WhatsApp na resposta
+
+**Status:** Aceita em 23 de novembro de 2026
+
+O Worker usa o identificador recebido em `messages[].from` para endereçar a
+resposta e identificar a conversa. No sandbox, a lista de destinatários precisa
+aceitar esse formato. O piloto recebeu um número brasileiro sem o nono dígito
+enquanto o painel tinha cadastrado o mesmo número com o dígito. A verificação
+do formato recebido corrigiu o erro `131030` para aquela conversa. O código
+preserva o identificador de entrada. Uma regra genérica de remoção ou adição de
+dígitos poderia endereçar a mensagem a outro destinatário.
+
+## ADR-013 — Credencial de envio dedicada à homologação
+
+**Status:** Aceita e validada em 23 de novembro de 2026
+
+O Worker de `staging` usa um token de usuário do sistema, emitido pelo app
+**AtendenteG Homologação**, com `whatsapp_business_messaging` e sem expiração
+programada. O usuário `atendenteg-staging-runtime` tem papel **Employee** e
+recebeu acesso apenas aos ativos de teste necessários. A conta do WhatsApp e a
+conta de mensagens vinculada são atribuições explícitas. Tokens de configuração
+podem ter permissões de gerenciamento quando a operação exigir.
+
+Valide a identidade do app, do usuário do sistema e do remetente e faça um envio
+controlado antes da ativação em `staging`. A troca do secret ativa uma versão e
+segue a regra de autorização da ADR-006. O procedimento e o reteste pelo celular
+estão em [HOMOLOGACAO_META.md](HOMOLOGACAO_META.md).

@@ -28,9 +28,9 @@ Cloudflare remoto ou produção.
 
 O roteiro separado para validar a cadeia real com o número de teste da Meta
 está em [docs/HOMOLOGACAO_META.md](docs/HOMOLOGACAO_META.md). Ele cobre o
-callback, a inscrição obrigatória da conta de mensagens no app, o ensaio ponta
-a ponta, diagnóstico seguro e retorno rápido. Usa apenas o ambiente `staging`
-e nunca os números dos negócios participantes.
+callback, a inscrição da conta de mensagens, a verificação do número do
+desenvolvedor como destinatário e a configuração da credencial de longa duração.
+O ensaio ponta a ponta usa apenas o ambiente `staging`.
 
 O estado consolidado, o histórico do piloto e o ponto exato de retomada estão
 em [docs/ESTADO_ATUAL.md](docs/ESTADO_ATUAL.md).
