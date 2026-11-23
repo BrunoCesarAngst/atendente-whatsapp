@@ -23,6 +23,7 @@ uma invocação e muda a cada novo webhook, inclusive em uma reentrega.
 | Webhook recebido, assinatura validada, recebimento confirmado | A entrada chegou e o Worker confirmou que recebeu a mensagem. O trabalho da conversa continua em segundo plano. |
 | Estado gravado e passo da conversa | Mostra onde a conversa ficou, como catálogo, seleção de data ou confirmação. |
 | Reserva confirmada, conflito ou triagem registrada | Indica o resultado da tentativa no repositório. O evento de gravação pode preceder uma falha de envio. |
+| Menu do responsável aberto | O Worker reconheceu `/` ou `/menu` enviado pelo responsável autorizado e preparou os botões. |
 | Relatório consultado, referência atualizada ou custo-hora atualizado | A operação do responsável foi executada para a agenda. Os valores do relatório ficam na conversa. |
 | Envio aceito pela Meta | A API aceitou o envio. Para comprovar entrega, confira o celular. |
 | Falha no envio à Meta | Use HTTP, código e subcódigo para investigar o erro. Um erro de transporte pode aparecer como falha de processamento na etapa envio. |

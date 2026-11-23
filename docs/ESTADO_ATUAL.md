@@ -30,18 +30,24 @@ passou a usar a credencial sem expiração programada de
 desenvolvedor completou a jornada novamente. O D1 registrou oito mensagens
 novas da mesma conversa e uma nova reserva confirmada.
 
-Depois desse piloto, a medição de valor e o monitor de logs chegaram ao
-Worker de homologação. O roteamento por número empresarial, com reserva
-e relatório isolados por empresa, passou no ensaio local com dois negócios
-fictícios. O reteste remoto dessa última entrega é o próximo marco.
+Em `staging`, o desenvolvedor testou consulta de preço, relatório `/valor`
+e abertura do menu privado no celular. O isolamento de catálogo, reserva e
+relatório passou no ensaio local com dois negócios fictícios. O reteste
+remoto usou um único remetente da Meta. A sugestão nativa de `/menu` ao
+digitar a barra ficou pendente no número de teste.
+
+A avaliação de promoção recomenda manter a versão em `staging`. A agenda
+ainda aceita intervalos sobrepostos para um mesmo profissional. A publicação
+também depende de preparar o D1 e confirmar a configuração comercial de
+produção. O próximo incremento é fechar a regra de disponibilidade e reserva.
 
 ## Estado por ambiente
 
 | Ambiente | Estado | O que foi comprovado | Limite atual |
 | --- | --- | --- | --- |
 | Local | Pronto | Worker, D1, mock da Cloud API, jornadas e persistência | Não prova entrega real da Meta |
-| Homologação | Agendamento validado ponta a ponta | Callback, assinatura, inscrição da conta de teste, recebimento, envio com token de usuário do sistema e reserva confirmada | Ensaio realizado com perfil de barbearia e o próprio desenvolvedor como destinatário |
-| Produção | Não utilizada neste piloto | Nada foi alterado nesta etapa | Não deve ser usada para testes |
+| Homologação | Agendamento, consulta e menu validados no celular | Callback, autenticação, inscrição da conta de teste, envio com token de usuário do sistema, reserva, preço, `/valor` e menu | Um remetente de teste e o próprio desenvolvedor como destinatário. Sugestão nativa ausente no teste |
+| Produção | Fora do piloto. `main` estava em `bf05825` na avaliação | O empacotamento local do candidato aponta para D1 e remetente distintos dos de `staging` | A prontidão do banco, do perfil e da integração comercial segue pendente |
 
 ## Arquitetura que está em uso
 
@@ -78,8 +84,8 @@ Separações importantes:
 6. Foi corrigida a configuração TypeScript para que o editor aceite imports com
    extensão `.ts` sem emitir JavaScript.
 
-As verificações atuais passam: geração de tipos, TypeScript, checagem de diff e
-28 testes automatizados.
+Na revisão do candidato `724aba1`, passaram a checagem dos tipos do Wrangler,
+o TypeScript, a checagem de diff e 35 testes automatizados.
 
 ## Linha do tempo do piloto remoto
 
@@ -233,10 +239,65 @@ o relatório correspondente, com referências de 2 e 5 minutos. O ensaio
 bloqueou acesso cruzado e uma tentativa de recalibrar a outra empresa.
 
 O código unifica o roteamento com o rastro operacional. Uma mensagem sem
-rota configurada gera um evento seguro para diagnóstico. Os 34 testes
-automatizados passaram com SQLite local e Graph simulada. O Worker remoto
-segue na versão de logs identificada acima até a publicação e validação
-autorizadas dessa entrega.
+rota configurada gera um evento seguro para diagnóstico. O PR #5 foi
+integrado em `0093a3f` e publicado em `staging`. O ensaio no celular do
+desenvolvedor confirmou o processamento de “Qual o preço?” e `/valor`.
+O terminal mostrou a assinatura validada, o passo ou a consulta correspondente
+e o envio aceito pela Meta. O ensaio remoto cobriu o número de teste.
+
+### 13. Menu privado e sugestão nativa
+
+O PR #6 foi integrado em `724aba1` e publicado no Worker de homologação
+como versão `9d1bd216-c3f6-4950-aad5-2d222b63571a`. No celular, o
+desenvolvedor confirmou que enviar `/menu` ou `/` abre os botões **Ver
+valor**, **Como calibrar** e **Ajustar custo-hora**. O Worker autoriza o
+responsável tanto na abertura quanto no acionamento dos botões. Os botões
+de calibração e custo-hora exibem instruções. A gravação ocorre após o
+envio do comando com os parâmetros.
+
+No WhatsApp Manager, em **Números de telefone → Configurações →
+Automações → Comandos**, foi cadastrado somente `/menu`, com a descrição
+**Abrir menu**, no mesmo número de teste de `staging`. O cadastro apareceu
+após recarregar o painel e reabrir as automações. No celular, digitar `/`
+ou `/m` no campo vazio não exibiu a sugestão. A configuração de sugestões
+fica no número empresarial da Meta. A interface do WhatsApp cuida da
+exibição antes do envio, e o Worker verifica a autorização dos comandos
+quando recebe a mensagem. O suporte a sugestões para esse número de teste
+permanece sem confirmação. Para acessar o menu, envie `/`.
+[Documentação da Meta sobre comandos](https://developers.facebook.com/docs/whatsapp/cloud-api/phone-numbers/conversational-components/)
+
+### 14. Avaliação de promoção para `main`
+
+A CI do commit de homologação passou, assim como o empacotamento local
+dos dois ambientes. A avaliação recomenda segurar a promoção até
+corrigir a agenda e preparar os recursos de produção.
+
+1. **Disponibilidade e gravação.** Um ensaio com SQLite e o repositório
+   D1 confirmou que, após uma reserva de 45 minutos às 09h, a agenda
+   ainda oferece 09h30 e grava uma segunda reserva de 45 minutos para o
+   mesmo profissional. Hoje a disponibilidade e o índice único comparam
+   o horário de início. Cubra a sobreposição na oferta e na gravação,
+   inclusive em confirmações concorrentes. Preserve reservas em horários
+   que só se tocam e o isolamento por empresa e profissional.
+2. **Schema de produção.** Com apenas as migrations `0001` e `0002`,
+   a gravação do candidato falhou ao referenciar `automated_at`, mesmo
+   sem dados de medição. No mesmo ensaio, a `0003_booking_impact.sql`
+   preservou a reserva anterior, com campos de medição vazios. Confirme
+   o estado do D1 de produção e prepare a aplicação da migration antes
+   de ativar o Worker, se estiver pendente. A avaliação usou SQLite local.
+3. **Configuração de lançamento.** Ambos os dry runs passaram. A raiz
+   aponta para `atendenteg-production` e `staging` para
+   `atendenteg-staging`, com IDs de remetente distintos. Como a raiz
+   não declara `BUSINESS_PROFILE`, o código usa a configuração padrão de
+   barbearia. Antes de lançar, confirme o catálogo, a agenda, o remetente,
+   o app Meta, os segredos e o responsável do estabelecimento aprovado.
+   O teste de dois negócios usa uma credencial fictícia compartilhada.
+   A ativação de mais empresas reais precisa validar as permissões de
+   seus remetentes na Meta.
+
+O empacotamento foi local e não verificou o esquema remoto, credenciais
+ou entrega de mensagens em produção. O fluxo de PR e publicação está em
+[WORKFLOW_GIT.md](WORKFLOW_GIT.md).
 
 ## Decisões tomadas e por quê
 
@@ -284,6 +345,11 @@ Veja as ADRs 010 a 013 em [DECISIONS.md](DECISIONS.md).
    O `190` pede checagem da credencial. O `100` pede validação de identidade
    e teste direto. O `131030` pede verificar o cadastro para o formato
    exato recebido.
+5. Para o próximo incremento, inicie em `origin/staging` pela
+   [Entrega 2 do plano](PROXIMO_INCREMENTO.md#entrega-2--fechar-a-agenda-em-fatias).
+   Reproduza a sobreposição de intervalos no teste de disponibilidade e
+   confirmação. Valide intervalos adjacentes, concorrência e isolamento,
+   depois leve a mudança por PR para `staging`.
 
 ## Repositório e rastreabilidade
 
@@ -291,13 +357,17 @@ Veja as ADRs 010 a 013 em [DECISIONS.md](DECISIONS.md).
   `origin/main`.
 - Novas mudanças partem de `staging` e passam pelo check **TypeScript e testes**.
   Siga o [fluxo de Git](WORKFLOW_GIT.md) para homologar e promover uma versão.
-- O histórico da homologação está nos PRs da medição de valor e dos logs.
+- O histórico está nos PRs #3 a #6, que cobrem a medição de valor, os
+  logs, o roteamento por número e o menu privado.
   A branch `staging` reúne o código candidato. O Worker remoto muda por
   publicação manual de uma revisão aprovada.
 
 ## Leitura recomendada para retomar
 
-1. Este arquivo: visão geral e último estado real.
-2. `HOMOLOGACAO_META.md`: comandos e procedimento seguro.
-3. `LOCAL_VALIDATION.md`: validação sem Meta ou recursos remotos.
-4. `DECISIONS.md`: limites de arquitetura e decisões aceitas.
+1. Leia este arquivo para retomar da última evidência.
+2. Use [o plano de produto](PROXIMO_INCREMENTO.md) para acompanhar as
+   entregas de agenda, atendimento pelo WhatsApp, áudio e contratação.
+3. Consulte [o roteiro da Meta](HOMOLOGACAO_META.md) para homologação e
+   [o roteiro local](LOCAL_VALIDATION.md) para ensaios com dados fictícios.
+4. Consulte [as decisões](DECISIONS.md) e [o fluxo Git](WORKFLOW_GIT.md)
+   antes de alterar a arquitetura ou preparar uma promoção.

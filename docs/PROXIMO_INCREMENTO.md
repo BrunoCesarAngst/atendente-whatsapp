@@ -57,9 +57,11 @@ Envie a barra para abrir o menu dentro da conversa. Os botões passam pela
 mesma autorização do comando digitado e funcionam somente no número
 empresarial vinculado ao responsável. Os atalhos de configuração explicam
 como informar os valores. A alteração acontece quando o responsável envia
-o comando com os parâmetros. A Meta também oferece sugestões nativas ao
-digitar a barra, configuradas para o número empresarial. O menu e as ações
-privadas ficam no Worker e usam a autorização por empresa.
+o comando com os parâmetros. A sugestão antes do envio é uma configuração
+do WhatsApp para o número empresarial. Em homologação, a configuração de
+`/menu` ficou salva, mas a sugestão não apareceu no celular ao digitar
+`/` ou `/m`. Enviar `/` é o atalho já validado. Veja o
+[resultado do ensaio](ESTADO_ATUAL.md#13-menu-privado-e-sugestão-nativa).
 
 Para calibrar, cronometre **só o tempo ativo da pessoa que atende** em alguns
 agendamentos manuais reais. Some os momentos de ler, consultar horários,
@@ -148,6 +150,11 @@ do processamento de negócio. Trocar uma configuração de teste exige
 preencher dados, com o mesmo código nos dois estabelecimentos.
 
 ## Entrega 2 — Fechar a agenda em fatias
+
+Comece pela disponibilidade. A [avaliação de promoção](ESTADO_ATUAL.md#14-avaliação-de-promoção-para-main)
+reproduziu duas reservas sobrepostas para o mesmo profissional, com
+inícios às 09h e 09h30 e duração de 45 minutos. O teste deve cobrir tanto
+o que é oferecido na conversa quanto a confirmação no D1.
 
 1. **Disponibilidade:** valide fuso, expediente, duração e bloqueios.
    Garanta no D1 que duas confirmações concorrentes em intervalos
