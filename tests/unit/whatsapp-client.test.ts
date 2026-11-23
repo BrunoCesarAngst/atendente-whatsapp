@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import { sendWhatsAppResponse } from '../../src/whatsapp/client.ts'
+import type { ConversationResponse } from '../../src/conversation/responses.ts'
 
 const bindings = {
   WHATSAPP_VERIFY_TOKEN: 'verify-token',
@@ -66,4 +67,38 @@ test('usa endpoint local configurado para o envio durante o desenvolvimento', as
   assert.deepEqual(requests, [
     'http://127.0.0.1:8788/v26.0/phone-id/messages',
   ])
+})
+
+test('identifica homologação e desenvolvimento nos payloads sem marcar produção', async (t) => {
+  const requests: string[] = []
+  t.mock.method(globalThis, 'fetch', async (_input: RequestInfo, init?: RequestInit) => {
+    requests.push(String(init?.body))
+    return new Response(null, { status: 200 })
+  })
+
+  const replies = [
+    { type: 'text', text: 'Horário confirmado' },
+    { type: 'buttons', text: 'Como posso ajudar?', options: [{ id: 'start', label: 'Agendar' }] },
+    { type: 'list', text: 'Escolha um serviço', buttonLabel: 'Ver serviços',
+      options: [{ id: 'haircut', label: 'Corte' }] },
+  ] satisfies Exclude<ConversationResponse, { type: 'flow' }>[]
+
+  for (const reply of replies) {
+    for (const APP_ENV of ['production', 'staging', 'development']) {
+      await sendWhatsAppResponse({ ...bindings, APP_ENV }, 'customer-id', reply)
+    }
+  }
+
+  for (const [index, reply] of replies.entries()) {
+    const [production, staging, local] = requests.slice(index * 3, index * 3 + 3).map((body) => JSON.parse(body))
+    if (reply.type === 'text') {
+      assert.equal(production.text.body, reply.text)
+      assert.equal(staging.text.body, `${reply.text}\n\n🧪 Homologação`)
+      assert.equal(local.text.body, `${reply.text}\n\n🛠️ Desenvolvimento`)
+    } else {
+      assert.deepEqual(staging.interactive, { ...production.interactive, footer: { text: '🧪 Homologação' } })
+      assert.deepEqual(local.interactive, { ...production.interactive, footer: { text: '🛠️ Desenvolvimento' } })
+      assert.equal(production.interactive.footer, undefined)
+    }
+  }
 })
