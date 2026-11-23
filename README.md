@@ -37,5 +37,8 @@ em [docs/ESTADO_ATUAL.md](docs/ESTADO_ATUAL.md).
 
 ## Publicação
 
+O [fluxo de Git e GitHub](docs/WORKFLOW_GIT.md) descreve a sequência de PRs,
+o check automático e a promoção de `staging` para `main`.
+
 Não execute deploy, migration remota ou alteração de secrets sem autorização
 explícita do proprietário. Consulte `AGENTS.md` antes de alterar o projeto.

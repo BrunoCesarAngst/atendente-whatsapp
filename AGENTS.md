@@ -46,6 +46,18 @@
   o ambiente-alvo e os resultados de validação; aguarde autorização explícita
   para executar a publicação.
 
+## Fluxo de Git e GitHub
+
+- Para novas mudanças, parta de `origin/staging` em uma branch
+  `codex/<mudança>`. Abra PR para `staging` e confira **TypeScript e testes**.
+  Preserve o trabalho local já existente ao preparar a branch.
+- Valide em homologação o SHA candidato e use PR de `staging` para `main`
+  para promover mudanças aprovadas. Use merge commit na promoção e preserve
+  a branch `staging`.
+- A CI valida o código. Deploy, mudanças remotas no D1 e troca de secrets são
+  operações manuais com autorização explícita. Siga
+  [o fluxo de Git](docs/WORKFLOW_GIT.md) para preparar cada ambiente.
+
 ## Desenvolvimento e homologação no WhatsApp
 
 - Leia [o estado atual](docs/ESTADO_ATUAL.md) e
