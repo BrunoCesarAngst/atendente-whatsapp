@@ -50,7 +50,7 @@ test('confirma evento autenticado sem mensagem de texto', async () => {
 test('confirma texto autenticado e responde pela jornada em segundo plano', async (t) => {
   const events: Array<{ event: string; traceId: string; messageIndex?: number; step?: string }> = []
   t.mock.method(console, 'log', (message: string) => { events.push(JSON.parse(message)) })
-  const body = JSON.stringify({ entry: [{ changes: [{ value: { messages: [{
+  const body = JSON.stringify({ entry: [{ changes: [{ value: { metadata: { phone_number_id: 'phone-id' }, messages: [{
     type: 'text', from: 'customer-integration', id: 'wamid.integration', text: { body: 'oi' },
   }] } }] }] })
   const originalFetch = globalThis.fetch
@@ -91,4 +91,53 @@ test('confirma texto autenticado e responde pela jornada em segundo plano', asyn
   } finally {
     globalThis.fetch = originalFetch
   }
+})
+
+test('usa o catálogo e o remetente de cada número empresarial no mesmo webhook', async (t) => {
+  const calls: Array<{ sender: string; text: string; rows: Array<{ title: string; description: string }> }> = []
+  t.mock.method(globalThis, 'fetch', async (url: string, init: RequestInit) => {
+    const payload = JSON.parse(String(init.body))
+    calls.push({
+      sender: new URL(url).pathname.split('/')[2],
+      text: payload.text?.body ?? '',
+      rows: payload.interactive?.action.sections?.flatMap((section: { rows: [] }) => section.rows) ?? [],
+    })
+    return new Response(null, { status: 200 })
+  })
+  const pending: Promise<unknown>[] = []
+  const body = JSON.stringify({ entry: [{ changes: [
+    { value: { metadata: { phone_number_id: 'desconhecido' }, messages: [
+      { from: 'cliente-demo', id: 'preco-desconhecido', type: 'text', text: { body: 'Qual o preço?' } },
+    ] } },
+    ...['barbearia-teste', 'salao-teste'].map((phoneNumberId) => ({
+      value: { metadata: { phone_number_id: phoneNumberId }, messages: [
+        { from: 'cliente-demo', id: 'preco-demo', type: 'text', text: { body: 'Qual o preço?' } },
+        { from: 'cliente-demo', id: 'catalogo-demo', type: 'interactive', interactive: { button_reply: { id: 'services:show' } } },
+      ] },
+    })),
+    { value: { messages: [
+      { from: 'cliente-demo', id: 'sem-metadados', type: 'text', text: { body: 'Qual o preço?' } },
+    ] } },
+  ] }] })
+  const response = await app.request('/webhook', {
+    method: 'POST', headers: { 'x-hub-signature-256': await signature(body) }, body,
+  }, {
+    ...bindings,
+    WHATSAPP_BUSINESS_PROFILES: JSON.stringify({ 'barbearia-teste': 'barbershop', 'salao-teste': 'salon' }),
+  }, {
+    waitUntil(promise: Promise<unknown>) { pending.push(promise) },
+    passThroughOnException() {},
+    props: undefined,
+  })
+  assert.equal(await response.text(), 'EVENT_RECEIVED')
+  await Promise.all(pending)
+  assert.deepEqual(calls.map((call) => call.sender), ['barbearia-teste', 'barbearia-teste', 'salao-teste', 'salao-teste'])
+  assert.match(calls[0].text, /Corte masculino: R\$ 45,00/)
+  assert.doesNotMatch(calls[0].text, /Escova/)
+  assert.deepEqual(calls[1].rows.map(({ title }) => title), ['Corte masculino', 'Barba', 'Corte + barba', 'Pezinho'])
+  assert.match(calls[2].text, /Escova: R\$ 55,00/)
+  assert.doesNotMatch(calls[2].text, /Barba/)
+  assert.deepEqual(calls[3].rows.map(({ title, description }) => [title, description]), [
+    ['Corte feminino', 'R$ 70,00'], ['Escova', 'R$ 55,00'], ['Hidratação', 'R$ 90,00'],
+  ])
 })

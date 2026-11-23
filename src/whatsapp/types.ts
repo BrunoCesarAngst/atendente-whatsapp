@@ -64,6 +64,7 @@ export type IncomingInteractiveReply = {
   from: string
   id: string
   interactiveId: string
+  phoneNumberId?: string
 }
 
 export type IncomingWhatsAppMessage =
@@ -77,19 +78,20 @@ export function extractIncomingMessages(
 
   for (const entry of payload.entry ?? []) {
     for (const change of entry.changes ?? []) {
+      const phoneNumberId = change.value?.metadata?.phone_number_id
+      const receiver = typeof phoneNumberId === 'string' ? { phoneNumberId } : {}
       for (const message of change.value?.messages ?? []) {
         if (!message.from || !message.id) {
           continue
         }
 
         if (message.type === 'text' && message.text?.body) {
-          const phoneNumberId = change.value?.metadata?.phone_number_id
           result.push({
             type: 'text',
             from: message.from,
             id: message.id,
             text: message.text.body,
-            ...(phoneNumberId === undefined ? {} : { phoneNumberId }),
+            ...receiver,
           })
           continue
         }
@@ -104,6 +106,7 @@ export function extractIncomingMessages(
             from: message.from,
             id: message.id,
             interactiveId,
+            ...receiver,
           })
         }
       }

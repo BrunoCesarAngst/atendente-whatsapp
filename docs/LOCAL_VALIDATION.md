@@ -11,8 +11,10 @@ usa o Worker, D1 e uma simulação da Cloud API, todos em `127.0.0.1`.
    npx wrangler d1 migrations apply DB --local --persist-to .wrangler/state
    ```
 
-2. Em `.dev.vars`, adicione somente a configuração local abaixo. Não altere
-   tokens ou segredos existentes e não versione esse arquivo:
+2. Em `.dev.vars`, configure o endereço do mock abaixo. Garanta que
+   `WHATSAPP_PHONE_NUMBER_ID` esteja definido para o número do Worker local.
+   Os testes usam esse valor nos metadados dos webhooks simulados. Mantenha
+   credenciais e o arquivo fora do Git:
 
    ```text
    WHATSAPP_GRAPH_API_BASE_URL=http://127.0.0.1:8788

@@ -12,26 +12,14 @@ import {
   sendWhatsAppResponse,
 } from './whatsapp/client.ts'
 import { verifyWhatsAppSignature } from './whatsapp/signature.ts'
-import { getBusinessProfile } from './businesses/profiles.ts'
+import { getBusinessOwners, getBusinessRoutes } from './businesses/profiles.ts'
 import { createJourneyEngine } from './conversation/journey-engine.ts'
 import { ConversationOrchestrator } from './conversation/orchestrator.ts'
-import type { ConversationRepository } from './persistence/conversation-repository.ts'
 import { InMemoryConversationRepository } from './persistence/in-memory-conversation-repository.ts'
 import { D1ConversationRepository } from './persistence/d1-conversation-repository.ts'
 import { handleBookingImpactCommand } from './impact/booking-impact.ts'
 
 const inMemoryRepository = new InMemoryConversationRepository()
-
-function createOrchestrator(
-  repository: ConversationRepository,
-  profileName?: string,
-) {
-  const business = getBusinessProfile(profileName)
-  return new ConversationOrchestrator(
-    repository,
-    createJourneyEngine(repository, business),
-  )
-}
 
 const app = new Hono<{
   Bindings: Bindings
@@ -163,8 +151,12 @@ app.post('/webhook', async (c) => {
         ? new D1ConversationRepository(c.env.DB)
         : null
       const repository = d1Repository ?? inMemoryRepository
-      const business = getBusinessProfile(c.env.BUSINESS_PROFILE)
-      const orchestrator = createOrchestrator(repository, c.env.BUSINESS_PROFILE)
+      const routes = getBusinessRoutes(
+        c.env.WHATSAPP_PHONE_NUMBER_ID, c.env.BUSINESS_PROFILE, c.env.WHATSAPP_BUSINESS_PROFILES,
+      )
+      const owners = getBusinessOwners(
+        c.env.WHATSAPP_PHONE_NUMBER_ID, c.env.WHATSAPP_OWNER_ID, c.env.WHATSAPP_OWNER_IDS,
+      )
 
       if (!c.env.DB) {
         log('conversation_storage_not_configured', 'failed')
@@ -175,10 +167,16 @@ app.post('/webhook', async (c) => {
         const messageLog = createRequestLogger(traceId, messageIndex)
         phase = 'conversation'
         messageLog('message_started', 'started', { messageType: message.type })
+        const phoneId = message.phoneNumberId
+        const business = phoneId ? routes.get(phoneId) : undefined
+        if (!business || !phoneId) {
+          messageLog('message_route_ignored', 'ignored')
+          continue
+        }
+        const orchestrator = new ConversationOrchestrator(repository, createJourneyEngine(repository, business))
         const receivedAt = new Date().toISOString()
         const ownerResponses = d1Repository && business.mode === 'appointment' &&
-          message.type === 'text' && message.from === c.env.WHATSAPP_OWNER_ID &&
-          message.phoneNumberId && message.phoneNumberId === c.env.WHATSAPP_PHONE_NUMBER_ID
+          message.type === 'text' && message.from === owners?.get(phoneId)
           ? await handleBookingImpactCommand(d1Repository, {
               businessId: business.id, ownerId: message.from, messageId: message.id,
               receivedAt, text: message.text,
@@ -197,7 +195,7 @@ app.post('/webhook', async (c) => {
         phase = 'outbound'
         for (const response of responses) {
           if (response.type !== 'flow') {
-            await sendWhatsAppResponse(c.env, message.from, response, messageLog)
+            await sendWhatsAppResponse(c.env, message.from, response, phoneId, messageLog)
           }
         }
         messageLog('message_finished', 'success', { responseCount: responses.length })
