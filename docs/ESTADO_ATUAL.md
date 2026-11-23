@@ -244,6 +244,8 @@ Veja as ADRs 010 a 013 em [DECISIONS.md](DECISIONS.md).
 
 - O projeto está em repositório público no GitHub, com `main` rastreando
   `origin/main`.
+- Novas mudanças partem de `staging` e passam pelo check **TypeScript e testes**.
+  Siga o [fluxo de Git](WORKFLOW_GIT.md) para homologar e promover uma versão.
 - O commit de homologação anterior reuniu staging, política pública, testes e
   roteiro inicial.
 - Esta atualização histórica deve ser revisada e publicada no próximo commit
