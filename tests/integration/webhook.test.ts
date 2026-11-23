@@ -47,7 +47,9 @@ test('confirma evento autenticado sem mensagem de texto', async () => {
   assert.equal(await response.text(), 'EVENT_RECEIVED')
 })
 
-test('confirma texto autenticado e responde pela jornada em segundo plano', async () => {
+test('confirma texto autenticado e responde pela jornada em segundo plano', async (t) => {
+  const events: Array<{ event: string; traceId: string; messageIndex?: number; step?: string }> = []
+  t.mock.method(console, 'log', (message: string) => { events.push(JSON.parse(message)) })
   const body = JSON.stringify({ entry: [{ changes: [{ value: { messages: [{
     type: 'text', from: 'customer-integration', id: 'wamid.integration', text: { body: 'oi' },
   }] } }] }] })
@@ -75,6 +77,17 @@ test('confirma texto autenticado e responde pela jornada em segundo plano', asyn
     await Promise.all(pending)
     assert.equal(calls.length, 1)
     assert.match(calls[0]?.body ?? '', /booking:start/)
+    assert.deepEqual(events.map(({ event }) => event), [
+      'webhook_received', 'webhook_authenticated', 'webhook_acknowledged',
+      'conversation_storage_not_configured', 'message_started', 'conversation_started',
+      'conversation_saved', 'whatsapp_send_started', 'whatsapp_send_succeeded',
+      'message_finished', 'webhook_finished',
+    ])
+    assert.equal(new Set(events.map(({ traceId }) => traceId)).size, 1)
+    assert.match(events[0].traceId, /^[0-9a-f-]{36}$/)
+    assert.equal(events.find(({ event }) => event === 'conversation_saved')?.step, 'offered_actions')
+    assert.equal(events.find(({ event }) => event === 'whatsapp_send_succeeded')?.messageIndex, 1)
+    assert.doesNotMatch(JSON.stringify(events), /customer-integration|wamid.integration|test-app-secret|booking:start/)
   } finally {
     globalThis.fetch = originalFetch
   }

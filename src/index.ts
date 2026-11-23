@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 
 import type { Bindings } from './env.ts'
-import { logOperationalEvent } from './logging/logger.ts'
+import { createRequestLogger, logOperationalEvent, type LogDetails } from './logging/logger.ts'
 
 import {
   extractIncomingMessages,
@@ -119,6 +119,10 @@ app.get('/webhook', (c) => {
 //
 
 app.post('/webhook', async (c) => {
+  const startedAt = Date.now()
+  const traceId = crypto.randomUUID()
+  const log = createRequestLogger(traceId)
+  log('webhook_received', 'started')
   const rawBody = await c.req.arrayBuffer()
   const signature = c.req.header('x-hub-signature-256')
   const isAuthentic = await verifyWhatsAppSignature(
@@ -128,28 +132,31 @@ app.post('/webhook', async (c) => {
   )
 
   if (!isAuthentic) {
-    logOperationalEvent('webhook_signature_rejected', 'rejected')
+    log('webhook_signature_rejected', 'rejected', { httpStatus: 401 })
     return c.text('UNAUTHORIZED', 401)
   }
 
-  let payload: WhatsAppWebhookPayload
+  log('webhook_authenticated', 'success')
+  let messages: ReturnType<typeof extractIncomingMessages>
 
   try {
-    payload = JSON.parse(
+    const payload = JSON.parse(
       new TextDecoder().decode(rawBody),
     ) as WhatsAppWebhookPayload
+    messages = extractIncomingMessages(payload)
   } catch {
-    logOperationalEvent('webhook_invalid_json', 'rejected')
+    log('webhook_invalid_json', 'rejected', { httpStatus: 400 })
     return c.text('BAD_REQUEST', 400)
   }
 
-  const messages = extractIncomingMessages(payload)
-
   if (messages.length === 0) {
-    logOperationalEvent('webhook_ignored', 'ignored')
+    log('webhook_ignored', 'ignored', { httpStatus: 200, messageCount: 0 })
     return c.text('EVENT_RECEIVED')
   }
 
+  log('webhook_acknowledged', 'success', { httpStatus: 200, messageCount: messages.length })
+  let phase: LogDetails['phase'] = 'configuration'
+  let messageIndex: number | undefined
   c.executionCtx.waitUntil(
     (async () => {
       const d1Repository = c.env.DB
@@ -160,10 +167,14 @@ app.post('/webhook', async (c) => {
       const orchestrator = createOrchestrator(repository, c.env.BUSINESS_PROFILE)
 
       if (!c.env.DB) {
-        logOperationalEvent('conversation_storage_not_configured', 'failed')
+        log('conversation_storage_not_configured', 'failed')
       }
 
-      for (const message of messages) {
+      for (const [index, message] of messages.entries()) {
+        messageIndex = index + 1
+        const messageLog = createRequestLogger(traceId, messageIndex)
+        phase = 'conversation'
+        messageLog('message_started', 'started', { messageType: message.type })
         const receivedAt = new Date().toISOString()
         const ownerResponses = d1Repository && business.mode === 'appointment' &&
           message.type === 'text' && message.from === c.env.WHATSAPP_OWNER_ID &&
@@ -171,7 +182,7 @@ app.post('/webhook', async (c) => {
           ? await handleBookingImpactCommand(d1Repository, {
               businessId: business.id, ownerId: message.from, messageId: message.id,
               receivedAt, text: message.text,
-            })
+            }, messageLog)
           : null
         const responses = ownerResponses ?? await orchestrator.handle({
           businessId: business.id,
@@ -181,16 +192,20 @@ app.post('/webhook', async (c) => {
           ...(message.type === 'text'
             ? { text: message.text }
             : { interactiveId: message.interactiveId }),
-        })
+        }, messageLog)
 
+        phase = 'outbound'
         for (const response of responses) {
           if (response.type !== 'flow') {
-            await sendWhatsAppResponse(c.env, message.from, response)
+            await sendWhatsAppResponse(c.env, message.from, response, messageLog)
           }
         }
+        messageLog('message_finished', 'success', { responseCount: responses.length })
       }
+      log('webhook_finished', 'success', { durationMs: Date.now() - startedAt })
     })().catch(() => {
-      logOperationalEvent('message_processing_failed', 'failed')
+      createRequestLogger(traceId, messageIndex)('message_processing_failed', 'failed', { phase })
+      log('webhook_finished', 'failed', { durationMs: Date.now() - startedAt })
     }),
   )
 

@@ -19,6 +19,13 @@
 	],
 	"env": {
 		"staging": {
+			"observability": {
+				"enabled": true,
+				"logs": {
+					"enabled": true,
+					"invocation_logs": false
+				}
+			},
 			"vars": {
 				"WHATSAPP_PHONE_NUMBER_ID": "1329301080272794",
 				"WHATSAPP_GRAPH_API_VERSION": "v25.0",

@@ -1,3 +1,4 @@
+import type { OperationalLogger } from '../logging/logger.ts'
 import type { ConversationResponse } from '../conversation/responses.ts'
 import type { ConversationRepository } from '../persistence/conversation-repository.ts'
 
@@ -61,6 +62,7 @@ function text(message: string): ConversationResponse[] {
 export async function handleBookingImpactCommand(
   repository: BookingImpactRepository,
   input: OwnerMessage,
+  log?: OperationalLogger,
 ): Promise<ConversationResponse[] | null> {
   const [first, ...parameters] = input.text.trim().split(/\s+/)
   const command = first.toLowerCase()
@@ -70,13 +72,16 @@ export async function handleBookingImpactCommand(
 
   const { businessId, ownerId, messageId, receivedAt } = input
   if (!await repository.claimMessage(businessId, ownerId, messageId)) {
+    log?.('message_duplicate', 'ignored')
     return []
   }
 
   if (command === '/valor') {
     if (parameters.length !== 0) return text('Envie /valor para ver os últimos 30 dias.')
     const after = new Date(Date.parse(receivedAt) - 30 * 86400 * 1000).toISOString()
-    return text(renderImpact(await repository.getBookingImpact(businessId, after, receivedAt)))
+    const report = renderImpact(await repository.getBookingImpact(businessId, after, receivedAt))
+    log?.('value_report_generated', 'success')
+    return text(report)
   }
 
   if (command === '/calibrar') {
@@ -91,6 +96,7 @@ export async function handleBookingImpactCommand(
       ? samples[middle]
       : Math.round((samples[middle - 1] + samples[middle]) / 2)
     await repository.setBookingBaseline(businessId, median, samples.length)
+    log?.('value_baseline_updated', 'success')
     return text(`Calibração para as próximas reservas. Mediana: ${formatDuration(median)} em ${samples.length} amostras.`)
   }
 
@@ -100,6 +106,7 @@ export async function handleBookingImpactCommand(
   const [whole, fraction = ''] = parameters[0].split(/[,.]/)
   const cents = Number(whole) * 100 + Number(fraction.padEnd(2, '0'))
   await repository.setBookingHourlyCost(businessId, cents)
+  log?.('value_hourly_cost_updated', 'success')
   return text(cents === 0
     ? 'Equivalência em reais desativada. O relatório continua mostrando o tempo.'
     : `Custo-hora de referência atualizado para ${reais.format(cents / 100)}. O relatório usa essa taxa para converter o tempo estimado.`)

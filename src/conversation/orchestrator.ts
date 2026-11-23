@@ -1,3 +1,4 @@
+import { conversationSteps, type OperationalLogger } from '../logging/logger.ts'
 import type { ConversationResponse } from './responses.ts'
 import {
   createConversationState,
@@ -23,6 +24,7 @@ export interface JourneyEngine {
   handle(
     state: ConversationState,
     input: ConversationInput,
+    log?: OperationalLogger,
   ): Promise<JourneyResult>
 }
 
@@ -40,7 +42,7 @@ export class ConversationOrchestrator {
     this.journeyEngine = journeyEngine
   }
 
-  async handle(input: ConversationInput): Promise<ConversationResponse[]> {
+  async handle(input: ConversationInput, log?: OperationalLogger): Promise<ConversationResponse[]> {
     const claimed = await this.repository.claimMessage(
       input.businessId,
       input.customerId,
@@ -48,6 +50,7 @@ export class ConversationOrchestrator {
     )
 
     if (!claimed) {
+      log?.('message_duplicate', 'ignored')
       return []
     }
 
@@ -61,11 +64,13 @@ export class ConversationOrchestrator {
       input.receivedAt,
     )
 
+    log?.(existing ? 'conversation_loaded' : 'conversation_started', 'success')
     if (state.mode === 'human') {
+      log?.('conversation_human_mode', 'ignored')
       return []
     }
 
-    const result = await this.journeyEngine.handle(state, input)
+    const result = await this.journeyEngine.handle(state, input, log)
 
     await this.repository.save({
       ...result.state,
@@ -74,6 +79,10 @@ export class ConversationOrchestrator {
       updatedAt: input.receivedAt,
     })
 
+    const step = result.state.currentStep.startsWith('field:') ? 'collecting' : result.state.currentStep
+    log?.('conversation_saved', 'success', {
+      step: Object.hasOwn(conversationSteps, step) ? step as keyof typeof conversationSteps : undefined,
+    })
     return result.responses
   }
 }
