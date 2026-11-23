@@ -56,6 +56,7 @@ export type IncomingTextMessage = {
   from: string
   id: string
   text: string
+  phoneNumberId?: string
 }
 
 export type IncomingInteractiveReply = {
@@ -82,11 +83,13 @@ export function extractIncomingMessages(
         }
 
         if (message.type === 'text' && message.text?.body) {
+          const phoneNumberId = change.value?.metadata?.phone_number_id
           result.push({
             type: 'text',
             from: message.from,
             id: message.id,
             text: message.text.body,
+            ...(phoneNumberId === undefined ? {} : { phoneNumberId }),
           })
           continue
         }
@@ -112,8 +115,8 @@ export function extractIncomingMessages(
 
 export function extractIncomingTextMessages(
   payload: WhatsAppWebhookPayload,
-): Array<Omit<IncomingTextMessage, 'type'>> {
+): Array<Pick<IncomingTextMessage, 'from' | 'id' | 'text'>> {
   return extractIncomingMessages(payload)
     .filter((message): message is IncomingTextMessage => message.type === 'text')
-    .map(({ type: _, ...message }) => message)
+    .map(({ from, id, text }) => ({ from, id, text }))
 }

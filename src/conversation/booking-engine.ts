@@ -129,6 +129,7 @@ export function createBookingJourneyEngine(
           businessId: input.businessId, customerId: input.customerId, serviceId: service.id,
           professionalId: config.professional.id, startsAt, priceInReais: service.priceInReais,
           durationMinutes: service.durationMinutes,
+          automatedAt: input.receivedAt,
         })
         if (!appointment) {
           return { state: withStep(state, 'select_time'), responses: [{ type: 'text', text: 'Esse horário acabou de ser reservado. Escolha outro horário, por favor.' }] }

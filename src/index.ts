@@ -18,6 +18,7 @@ import { ConversationOrchestrator } from './conversation/orchestrator.ts'
 import type { ConversationRepository } from './persistence/conversation-repository.ts'
 import { InMemoryConversationRepository } from './persistence/in-memory-conversation-repository.ts'
 import { D1ConversationRepository } from './persistence/d1-conversation-repository.ts'
+import { handleBookingImpactCommand } from './impact/booking-impact.ts'
 
 const inMemoryRepository = new InMemoryConversationRepository()
 
@@ -151,9 +152,10 @@ app.post('/webhook', async (c) => {
 
   c.executionCtx.waitUntil(
     (async () => {
-      const repository = c.env.DB
+      const d1Repository = c.env.DB
         ? new D1ConversationRepository(c.env.DB)
-        : inMemoryRepository
+        : null
+      const repository = d1Repository ?? inMemoryRepository
       const business = getBusinessProfile(c.env.BUSINESS_PROFILE)
       const orchestrator = createOrchestrator(repository, c.env.BUSINESS_PROFILE)
 
@@ -162,11 +164,20 @@ app.post('/webhook', async (c) => {
       }
 
       for (const message of messages) {
-        const responses = await orchestrator.handle({
+        const receivedAt = new Date().toISOString()
+        const ownerResponses = d1Repository && business.mode === 'appointment' &&
+          message.type === 'text' && message.from === c.env.WHATSAPP_OWNER_ID &&
+          message.phoneNumberId && message.phoneNumberId === c.env.WHATSAPP_PHONE_NUMBER_ID
+          ? await handleBookingImpactCommand(d1Repository, {
+              businessId: business.id, ownerId: message.from, messageId: message.id,
+              receivedAt, text: message.text,
+            })
+          : null
+        const responses = ownerResponses ?? await orchestrator.handle({
           businessId: business.id,
           customerId: message.from,
           messageId: message.id,
-          receivedAt: new Date().toISOString(),
+          receivedAt,
           ...(message.type === 'text'
             ? { text: message.text }
             : { interactiveId: message.interactiveId }),
