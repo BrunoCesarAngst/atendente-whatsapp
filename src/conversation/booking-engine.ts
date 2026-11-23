@@ -39,7 +39,7 @@ export function createBookingJourneyEngine(
   const availability = new AvailabilityService(repository, config)
 
   return {
-    async handle(state, input): Promise<JourneyResult> {
+    async handle(state, input, log): Promise<JourneyResult> {
       const action = input.interactiveId ?? input.text?.trim().toLowerCase()
 
       if (input.text && /preço|preco|valor|quanto custa/u.test(input.text)) {
@@ -132,8 +132,10 @@ export function createBookingJourneyEngine(
           automatedAt: input.receivedAt,
         })
         if (!appointment) {
+          log?.('appointment_conflict', 'rejected')
           return { state: withStep(state, 'select_time'), responses: [{ type: 'text', text: 'Esse horário acabou de ser reservado. Escolha outro horário, por favor.' }] }
         }
+        log?.('appointment_recorded', 'success')
         return {
           state: withStep(state, 'booked'),
           responses: [{ type: 'text', text: `Seu horário está confirmado para ${formatTime(startsAt)} em ${formatDate(startsAt.slice(0, 10))}.` }],

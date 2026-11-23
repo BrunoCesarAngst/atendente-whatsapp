@@ -9,7 +9,8 @@
     "test": "node --experimental-strip-types --test tests/unit/*.test.ts tests/integration/*.test.ts",
     "mock:graph": "node --experimental-strip-types scripts/mock-whatsapp-graph.ts",
     "smoke:local": "node --experimental-strip-types scripts/local-booking-smoke.ts",
-    "smoke:requests": "node --experimental-strip-types scripts/local-request-smoke.ts"
+    "smoke:requests": "node --experimental-strip-types scripts/local-request-smoke.ts",
+    "logs:staging": "bash -o pipefail -c 'wrangler tail --env staging --method POST --format json | jq -c --unbuffered . | node --experimental-strip-types scripts/format-operational-logs.ts'"
   },
   "dependencies": {
     "hono": "^4.13.13"

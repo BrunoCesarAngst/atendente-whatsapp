@@ -53,7 +53,7 @@ export function createRequestJourneyEngine(
   config: RequestBusinessConfig,
 ): JourneyEngine {
   return {
-    async handle(state, input): Promise<JourneyResult> {
+    async handle(state, input, log): Promise<JourneyResult> {
       const action = input.interactiveId ?? input.text?.trim().toLowerCase()
 
       if (action === 'request:start') {
@@ -128,6 +128,7 @@ export function createRequestJourneyEngine(
           details,
           createdAt: input.receivedAt,
         })
+        log?.('service_request_recorded', 'success')
         return {
           state: { ...withStep(advanced, 'submitted'), mode: 'human' },
           responses: [{

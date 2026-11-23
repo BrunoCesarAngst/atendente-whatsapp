@@ -35,9 +35,14 @@ test('registra somente códigos seguros quando a Cloud API rejeita um envio', as
     console.log = originalLog
   }
 
-  assert.deepEqual(logs, [
-    '{"event":"whatsapp_send_failed","outcome":"failed","httpStatus":403,"graphErrorCode":131030,"graphErrorSubcode":2494010}',
-  ])
+  assert.equal(logs.length, 2)
+  assert.deepEqual(JSON.parse(logs[0]), { event: 'whatsapp_send_started', outcome: 'started' })
+  const { durationMs, ...failure } = JSON.parse(logs[1])
+  assert.ok(durationMs >= 0)
+  assert.deepEqual(failure, {
+    event: 'whatsapp_send_failed', outcome: 'failed', httpStatus: 403,
+    graphErrorCode: 131030, graphErrorSubcode: 2494010,
+  })
   assert.doesNotMatch(logs.join(''), /sensitive|customer-id|mensagem de teste/)
 })
 

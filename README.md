@@ -39,6 +39,11 @@ O [próximo incremento do AtendenteG](docs/PROXIMO_INCREMENTO.md) divide o
 autoatendimento pelo WhatsApp em entregas testáveis e explica como medir e
 consultar o valor da agenda pelo WhatsApp do estabelecimento.
 
+## Logs de homologação
+
+Use `npm run logs:staging` para acompanhar o processamento no terminal.
+Veja o [guia de logs operacionais](docs/LOGS_OPERACIONAIS.md).
+
 ## Publicação
 
 O [fluxo de Git e GitHub](docs/WORKFLOW_GIT.md) descreve a sequência de PRs,
