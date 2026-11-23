@@ -176,10 +176,11 @@ app.post('/webhook', async (c) => {
         const orchestrator = new ConversationOrchestrator(repository, createJourneyEngine(repository, business))
         const receivedAt = new Date().toISOString()
         const ownerResponses = d1Repository && business.mode === 'appointment' &&
-          message.type === 'text' && message.from === owners?.get(phoneId)
+          message.from === owners?.get(phoneId)
           ? await handleBookingImpactCommand(d1Repository, {
               businessId: business.id, ownerId: message.from, messageId: message.id,
-              receivedAt, text: message.text,
+              receivedAt,
+              ...(message.type === 'text' ? { text: message.text } : { interactiveId: message.interactiveId }),
             }, messageLog)
           : null
         const responses = ownerResponses ?? await orchestrator.handle({

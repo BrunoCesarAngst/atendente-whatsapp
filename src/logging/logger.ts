@@ -17,6 +17,7 @@ export const operationalEvents = {
   conversation_loaded: 'Conversa recuperada',
   conversation_saved: 'Estado da conversa gravado',
   value_report_generated: 'Relatório de valor consultado',
+  owner_menu_opened: 'Menu do responsável aberto',
   value_baseline_updated: 'Referência de tempo atualizada',
   value_hourly_cost_updated: 'Custo-hora atualizado',
   appointment_recorded: 'Reserva confirmada no D1 ou repositório local',

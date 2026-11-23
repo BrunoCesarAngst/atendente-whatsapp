@@ -48,9 +48,18 @@ fora do Git, do chat de suporte e de logs.
 
 | Mensagem | Resultado |
 | --- | --- |
+| `/` ou `/menu` | Abre os atalhos do responsável para ver o valor ou obter instruções de calibração e custo-hora. |
 | `/calibrar 90 120 150` | Grava a mediana de três amostras de tempo ativo para as próximas reservas. São aceitos de 3 a 15 valores em segundos. |
 | `/custo-hora 60,00` | Define a taxa opcional de referência em reais por hora. `/custo-hora 0` desativa a conversão em reais. |
 | `/valor` | Mostra as reservas automáticas dos últimos 30 dias, a cobertura da calibração, o tempo estimado e a equivalência em reais quando configurada. |
+
+Envie a barra para abrir o menu dentro da conversa. Os botões passam pela
+mesma autorização do comando digitado e funcionam somente no número
+empresarial vinculado ao responsável. Os atalhos de configuração explicam
+como informar os valores. A alteração acontece quando o responsável envia
+o comando com os parâmetros. A Meta também oferece sugestões nativas ao
+digitar a barra, configuradas para o número empresarial. O menu e as ações
+privadas ficam no Worker e usam a autorização por empresa.
 
 Para calibrar, cronometre **só o tempo ativo da pessoa que atende** em alguns
 agendamentos manuais reais. Some os momentos de ler, consultar horários,
