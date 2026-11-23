@@ -14,6 +14,10 @@ com `npm ci` e roda `npm run typecheck` e `npm test`. A CI tem acesso de leitura
 ao repositório, funciona sem segredos da Meta ou do Cloudflare e termina na
 validação. Os deploys são manuais.
 
+As respostas do WhatsApp exibem **🧪 Homologação** em `staging` e
+**🛠️ Desenvolvimento** quando o Worker é iniciado com `npm run dev`.
+O Worker de produção envia as respostas sem selo de teste.
+
 ## Desenvolvimento e PR de homologação
 
 1. Atualize as referências com `git fetch origin` e confirme a branch e o
